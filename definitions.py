@@ -6,6 +6,8 @@ from enum import StrEnum
 
 class Topic(StrEnum):
     '''These represent the types of messages that can be sent to the message bus.'''
+    TEST = 'testing'
+    TEST2 = 'testing2'
     START_OF_COMBAT = 'start_of_combat'
     START_OF_TURN = 'start_of_turn'
     END_OF_TURN = 'end_of_turn'
