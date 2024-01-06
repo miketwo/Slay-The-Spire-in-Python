@@ -738,6 +738,7 @@ class Enemy:
         self.next_move: list[tuple[str, str, tuple] | tuple[str, tuple]] = ''
         self.buffs = ei.init_effects("Enemy Buffs") | powers
         self.debuffs = ei.init_effects("Enemy Debuffs")
+        self.fresh_effects: list[str] = [] # Shows what effects were applied after the player's turn
         self.stolen_gold = 0
         self.awake_turns = 0
         self.mode = ""
