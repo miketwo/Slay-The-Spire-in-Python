@@ -9,6 +9,16 @@ def ei():
   ei = helper.EffectInterface()
   return ei
 
+@pytest.fixture
+def player():
+  player = entities.create_player()
+  return player
+
+@pytest.fixture
+def enemy():
+  enemy = enemy_catalog.SneakyGremlin()
+  return enemy
+
 class TestEffectInterface():
   def test_init_effects_player_debuffs(self, ei):
     output = ei.init_effects("player debuffs")
@@ -27,32 +37,30 @@ class TestEffectInterface():
     assert "Sharp Hide" in output
 
 class TestApplyEffects():
-  def test_player_buffs(self, ei):
+  def test_player_buffs(self, ei, player):
     buffs = ei.init_effects("player buffs")
-    player = entities.create_player()
     for buff in buffs:
-      ei.apply_effect(player, buff, random.randint(1, 5))
+      ei.apply_effect(target=player, user=player,
+                      effect_name=buff, amount=random.randint(1, 5))
     # No easy asserts possible
     for tick in range(random.randint(2, 7)):
       print(f"Tick: {tick+1}")
       ei.tick_effects(player)
 
-  def test_enemy_buffs(self, ei):
+  def test_enemy_buffs(self, ei, enemy):
     buffs = ei.init_effects("enemy buffs")
     for buff in buffs:
-      enemy = enemy_catalog.SneakyGremlin()
-      ei.apply_effect(enemy, buff, 5)
+      ei.apply_effect(target=enemy, user=enemy, effect_name=buff, amount=random.randint(1, 5))
     # No easy asserts possible
 
-  def test_player_debuffs(self, ei):
+  def test_player_debuffs(self, ei, player):
     debuffs = ei.init_effects("player debuffs")
     for debuff in debuffs:
-      ei.apply_effect(entities.create_player(), debuff, 5)
+      ei.apply_effect(target=player, user=player, effect_name=debuff, amount=random.randint(1, 5))
     # No easy asserts possible
 
-  def test_enemy_debuffs(self, ei):
+  def test_enemy_debuffs(self, ei, enemy):
     debuffs = ei.init_effects("enemy debuffs")
     for debuff in debuffs:
-      enemy = enemy_catalog.SneakyGremlin()
-      ei.apply_effect(enemy, debuff, 5)
+      ei.apply_effect(target=enemy, user=enemy, effect_name=debuff, amount=random.randint(1, 5))
     # No easy asserts possible
