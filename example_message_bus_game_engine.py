@@ -27,41 +27,13 @@ up a test where you send it certain messages and verify that it modifies the gam
 Apologies for the long example. Hopefully it makes sense.
 '''
 from dataclasses import dataclass
-from enum import StrEnum
 from ansi_tags import am, ansiprint
 from uuid import uuid4
 import math
+from definitions import Topic
+from message_bus import MessageBus
 
-class Message(StrEnum):
-    '''These represent the types of messages that can be sent to the message bus.'''
-    START_OF_COMBAT = 'start_of_combat'
-    START_OF_TURN = 'start_of_turn'
-    END_OF_TURN = 'end_of_turn'
-    BEFORE_ATTACK = 'before_attack'
-    AFTER_ATTACK = 'after_attack'
 
-class MessageBus():
-  '''This is a Pub/Sub, or Publish/Subscribe, message bus. It allows components to subscribe to messages,
-  registering a callback function that will be called when that message is published.
-  '''
-  def __init__(self, debug=True):
-    self.subscribers = dict(dict())
-    self.debug = debug
-
-  def subscribe(self, event_type: Message, callback, uid):
-    if event_type not in self.subscribers:
-      self.subscribers[event_type] = dict()
-    self.subscribers[event_type][uid] = callback
-    if self.debug:
-      ansiprint(f"<basic>MESSAGEBUS</basic>: <blue>{event_type}</blue> | Subscribed <bold>{callback.__qualname__}</bold>")
-
-  def publish(self, event_type: Message, data):
-    if event_type in self.subscribers:
-      for uid, callback in self.subscribers[event_type].items():
-        if self.debug:
-          ansiprint(f"<basic>MESSAGEBUS</basic>: <blue>{event_type}</blue> | Calling <bold>{callback.__qualname__}</bold>")
-        callback(event_type, data)
-    return data
 
 class Registerable():
     '''A mixin so I don't have to repeat the register function in every class that needs it.'''
@@ -73,7 +45,7 @@ class Registerable():
 class Character(Registerable):
     '''This is both the Player and the Enemy. Note that it is also subscribed to the message bus so that it can
     take actions at the end of each turn. This keeps that logic out of the Combat class.'''
-    registers = [Message.END_OF_TURN]
+    registers = [Topic.END_OF_TURN]
 
     def __init__(self, name, cards, buffs, debuffs, relics, bus) -> None:
         self.name = name
@@ -98,7 +70,7 @@ class Character(Registerable):
         ansiprint(f"<red>{self.name}</red> took <red>{damage}</red> damage from {reasons}")
 
     def callback(self, message, context):
-        if message == Message.END_OF_TURN:
+        if message == Topic.END_OF_TURN:
             removing = [buff for buff in self.buffs if buff.duration <= 0] + [debuff for debuff in self.debuffs if debuff.duration <= 0]
             for modifier in removing:
                 ansiprint(f"<red>{self.name}</red>: <bold>{modifier.name}</bold> wore off.")
@@ -131,7 +103,7 @@ class Modifiers(Registerable):
 
 
 class Buff_Strength(Modifiers):
-    registers = [Message.BEFORE_ATTACK, Message.END_OF_TURN]
+    registers = [Topic.BEFORE_ATTACK, Topic.END_OF_TURN]
 
     def __init__(self, duration) -> None:
         super().__init__()
@@ -141,15 +113,15 @@ class Buff_Strength(Modifiers):
         self.amount = 2
 
     def callback(self, message, context):
-        if message == Message.END_OF_TURN:
+        if message == Topic.END_OF_TURN:
             self.duration -= 1
-        if message == Message.BEFORE_ATTACK and self.duration > 0:
+        if message == Topic.BEFORE_ATTACK and self.duration > 0:
             origin, target, card = context
             dmg_affected_by = "<buff>Strength</buff>"
             card.modify_damage(self.amount, reason=dmg_affected_by)
 
 class Debuff_Vulnerable(Modifiers):
-    registers = [Message.BEFORE_ATTACK, Message.END_OF_TURN]
+    registers = [Topic.BEFORE_ATTACK, Topic.END_OF_TURN]
 
     def __init__(self, duration) -> None:
         super().__init__()
@@ -158,16 +130,16 @@ class Debuff_Vulnerable(Modifiers):
         self.info = 'You/It takes 50%% more damage from attacks.'
 
     def callback(self, message, context):
-        if message == Message.END_OF_TURN:
+        if message == Topic.END_OF_TURN:
             self.duration -= 1
-        if message == Message.BEFORE_ATTACK and self.duration > 0:
+        if message == Topic.BEFORE_ATTACK and self.duration > 0:
             origin, target, card = context
             if self in target.debuffs:
                 dmg_affected_by = "<debuff>Vulnerable</debuff>"
                 card.modify_damage(math.floor(card.damage * 0.50), reason=dmg_affected_by)
 
 class Relic_Akabeko(Modifiers):
-    registers = [Message.START_OF_COMBAT, Message.BEFORE_ATTACK, Message.AFTER_ATTACK]
+    registers = [Topic.START_OF_COMBAT, Topic.BEFORE_ATTACK, Topic.AFTER_ATTACK]
 
     def __init__(self) -> None:
         super().__init__()
@@ -180,13 +152,13 @@ class Relic_Akabeko(Modifiers):
        return f"{self.name}"
 
     def callback(self, message, context):
-      if message == Message.START_OF_COMBAT:
+      if message == Topic.START_OF_COMBAT:
         self.first_attack = True
-      if message == Message.BEFORE_ATTACK and self.first_attack:
+      if message == Topic.BEFORE_ATTACK and self.first_attack:
           origin, target, card = context
           dmg_affected_by = "<buff>Akabeko</buff>"
           card.modify_damage(self.amount, reason=dmg_affected_by)
-      if message == Message.AFTER_ATTACK:
+      if message == Topic.AFTER_ATTACK:
         self.first_attack = False
 
 @dataclass
@@ -198,21 +170,21 @@ class Combat():
 
     def demo(self):
         self.show_everything()
-        self.bus.publish(Message.START_OF_COMBAT, self)
-        self.bus.publish(Message.START_OF_TURN, self)
+        self.bus.publish(Topic.START_OF_COMBAT, self)
+        self.bus.publish(Topic.START_OF_TURN, self)
         self.play_card(origin=self.player, target=self.enemy, card=self.player.cards[0])
-        self.bus.publish(Message.END_OF_TURN, self)
+        self.bus.publish(Topic.END_OF_TURN, self)
         self.turn += 1
         self.show_everything()
-        self.bus.publish(Message.START_OF_TURN, self)
+        self.bus.publish(Topic.START_OF_TURN, self)
         self.play_card(origin=self.player, target=self.enemy, card=self.player.cards[1])
         self.show_everything()
 
     def play_card(self, origin, target, card):
         # Emit a message that a card is about to be played
-        self.bus.publish(Message.BEFORE_ATTACK, (origin, target, card))
+        self.bus.publish(Topic.BEFORE_ATTACK, (origin, target, card))
         card.apply(target)
-        self.bus.publish(Message.AFTER_ATTACK, (origin, target, card))
+        self.bus.publish(Topic.AFTER_ATTACK, (origin, target, card))
 
     def show_everything(self):
        ansiprint(f"\n<bold>Turn {self.turn}</bold>")
@@ -222,7 +194,7 @@ class Combat():
 
 def main():
   # Create the universe
-  bus = MessageBus(debug=False)   # Switch debug to True to see all the messages being sent
+  bus = MessageBus(debug=True)   # Switch debug to True to see all the messages being sent
   card1 = StrikeCard()
   card2 = StrikeCard()
   strength = Buff_Strength(duration=1)        # Change the duration to see it expire or not
