@@ -151,7 +151,7 @@ class Shop():
       if len(power_cards) >= 1:
         items.extend(random.sample(power_cards, 1))
 
-      colorless_cards = [c for c in all_cards if "Class" in c and c.player_class == "Colorless"]
+      colorless_cards = [c for c in all_cards if c.player_class == "Colorless"]
       colorless_uncommon = [c for c in colorless_cards if c.rarity == Rarity.UNCOMMON]
       colorless_rare = [c for c in colorless_cards if c.rarity == Rarity.RARE]
       if len(colorless_uncommon) >= 1:
