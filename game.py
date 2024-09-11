@@ -14,8 +14,9 @@ from enemy_catalog import (
 from entities import Enemy, Player
 from events import choose_event
 from helper import ei, gen, view
-from message_bus_tools import Message, bus
+from message_bus_tools import Message, bus, Card
 from shop import Shop
+from typing import TYPE_CHECKING
 
 DEBUG = True
 
@@ -105,14 +106,17 @@ class Game:
                 self.player.health_actions(heal_amount, "Heal")
                 break
             if action == "smith":
-                upgrade_card = view.list_input(
+                upgrade_card_index = view.list_input(
                     "What card do you want to upgrade?",
                     self.player.deck,
                     view.view_piles,
                     lambda card: not card.upgraded and (card.type not in (CardType.CURSE, CardType.STATUS) or card.name == "Burn"),
                     "That card is not upgradeable.",
                 )
-                self.player.deck[upgrade_card] = self.player.card_actions(self.player.deck[upgrade_card], "Upgrade", items.cards)
+                if upgrade_card_index is None:
+                    continue
+                upgrade_card: Card = self.player.deck[upgrade_card_index]
+                upgrade_card.upgrade()
                 break
             if action == "lift":
                 if self.player.girya_charges > 0:
@@ -338,9 +342,8 @@ class Combat:
                     target = int(input("Choose an enemy to target > ")) - 1
                     _ = self.active_enemies[target]
                 except (IndexError, ValueError):
-                    ansiprint(f"\u001b[1A\u001b[100D<red>You have to enter a number between 1 and {len(self.active_enemies)}</red>", end="")
+                    ansiprint(f"<red>You have to enter a number between 1 and {len(self.active_enemies)}</red>")
                     sleep(1)
-                    print("\u001b[2K\u001b[100D", end="")
                     continue
                 return target
 

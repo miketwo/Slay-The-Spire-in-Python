@@ -96,7 +96,7 @@ class Displayer:
         ansiprint("<bold>Relics: </bold>")
         self.view_relics(entity.relics)
         ansiprint("<bold>Hand: </bold>")
-        self.view_piles(entity.hand, entity, False, lambda card: (card.energy_cost if card.energy_cost != -1 else entity.energy) <= entity.energy)
+        self.view_piles(pile=entity.hand, shuffle=False, validator=lambda card: (card.energy_cost if card.energy_cost != -1 else entity.energy) <= entity.energy)
         if combat is True:
             counter = 1
             ansiprint("\n<bold>Enemies:</bold>")
@@ -122,14 +122,13 @@ class Displayer:
                     return response
                 option = int(response) - 1
                 if not validator(choices[option]):
-                    ansiprint(f"\u001b[1A\u001b[1000D<red>{message_when_invalid}</red>", end="")
+                    
+                    ansiprint(f"\n<red>{message_when_invalid}</red>")
                     sleep(1.5)
-                    print("\u001b[2K")
                     continue
             except (IndexError, ValueError):
-                ansiprint(f"\u001b[1A\u001b[100D<red>You have to enter a whole number between 1 and {len(choices)}.</red>", end="")
+                ansiprint(f"\n<red>You have to enter a whole number between 1 and {len(choices)}.</red>")
                 sleep(1)
-                print("\u001b[2K\u001b[100D", end="")
                 continue
             break
         return option
@@ -147,9 +146,8 @@ class Displayer:
                     ansiprint(input_string + "(type 'exit' to finish) > ", end="")
                     response = input()
                     if response == 'exit' and (strict and len(to_be_moved) < max_choices):
-                        ansiprint(f"\u001b[1A\u001b[1000D<red>You have to choose exactly {max_choices} items.</red>", end="")
+                        ansiprint(f"<red>You have to choose exactly {max_choices} items.</red>")
                         sleep(1)
-                        print("\u001b[2K\u001b[100D", end="")
                         continue
                     elif response == 'exit':
                         finished = True
@@ -158,16 +156,14 @@ class Displayer:
                         return response
                     option = int(response) - 1
                     if not validator(choices[option]):
-                        ansiprint(f"\u001b[1A\u001b[1000D<red>{message_when_invalid}</red>", end="")
+                        ansiprint(f"<red>{message_when_invalid}</red>")
                         sleep(1.5)
-                        print("\u001b[2K\u001b[100D")
                         continue
                     if len(to_be_moved) == max_choices:
                         del to_be_moved[0]
                 except (IndexError, ValueError):
-                    ansiprint(f"\u001b[1A\u001b[100D<red>You have to enter a whole number between 1 and {len(choices)}.</red>", end="")
+                    ansiprint(f"<red>You have to enter a whole number between 1 and {len(choices)}.</red>")
                     sleep(1)
-                    print("\u001b[2K\u001b[100D", end="")
                     continue
                 to_be_moved.append(choices[option])
                 break
