@@ -609,6 +609,39 @@ class Brutality(Effect):
             player.take_sourceless_dmg(1)
             player.draw_cards(1)
 
+class Split(Effect):
+    # When activated, splits into two smaller enemies.
+    registers = [Message.ON_DEATH_OR_ESCAPE]
+
+    def __init__(self, host, amount=0):
+        super().__init__(host, "Split", StackType.NONE, EffectType.BUFF, "When activated, splits into two smaller enemies.", amount=amount)
+    
+    def callback(self, message, data: tuple[Enemy, list[Enemy]]):
+        if message == Message.ON_DEATH_OR_ESCAPE:
+            print("Split effect activated")
+            enemy, enemies = data
+            split_into = {
+                "Slime Boss": (
+                    Enemy(self.health, 0, "Acid Slime(L)"),
+                    Enemy(self.health, 0, "Spike Slime (L)"),
+                ),
+                "Acid Slime (L)": (
+                    Enemy(self.health, 0, "Acid Slime(M)"),
+                    Enemy(self.health, 0, "Acid Slime(M)"),
+                ),
+                "Spike Slime (L)": (
+                    Enemy(self.health, 0, "Spike Slime (M)"),
+                    Enemy(self.health, 0, "Spike Slime (M)"),
+                ),
+            }
+            if enemy.name in split_into:
+                enemy.health = 0
+                for new_enemy in split_into[enemy.name]:
+                    new_enemy.health = enemy.max_health // 2
+                    enemies.append(new_enemy)
+                del enemies[enemies.index(enemy)]
+                ansiprint(f"{self.name} split into 2 {split_into[self.name].name}s")
+    
 class EffectInterface:
     """Responsible for applying effects, creating buff/debuff dictionaries, and counting down certain effects"""
     def __init__(self):
