@@ -1,13 +1,17 @@
+from __future__ import annotations
 import inspect
 import math
 import random
 from time import sleep
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
 
 import items
 from ansi_tags import ansiprint
 from definitions import CardType, CombatTier, PlayerClass
 from helper import gen, view
+
+if TYPE_CHECKING:
+    from items import Card
 
 
 def event_Neow(player):
@@ -181,7 +185,7 @@ def event_OminousForge(player):
         ansiprint("<bold>[Forge]</bold> <green>Upgrade a Card</green> \n<bold>[Rummage]</bold> <green>Obtain Warped Tongs.</green> <red>Become <keyword>Cursed | Pain</keyword></red> \n<bold>[Leave]</bold> Nothing happens")
         option = input('> ').lower()
         if option == 'forge':
-            option = view.list_input("What card do you want to upgrade? > ", player.deck, view.upgrade_preview, lambda card: not card.get("Upgraded") and (card.name == "Burn" or card['Type'] not in ("Status", "Curse")), "That card is not upgradeable.")
+            option = view.list_input("What card do you want to upgrade? > ", player.deck, view.upgrade_preview, lambda card: not card.upgraded and (card.name == "Burn" or card.type not in (CardType.CURSE, CardType.STATUS)), "That card is not upgradeable.")
             player.deck[option] = player.card_actions(player.deck[option], "Upgrade", items.cards)
             break
         if option == 'rummage':
@@ -256,7 +260,7 @@ def event_UpgradeShrine(player):
         option = input('> ').lower()
         if option == 'pray':
             view.upgrade_preview(player.deck)
-            upgrade_card = view.list_input('What card do you want to upgrade?', player.deck, view.upgrade_preview, lambda card: not card.get("Upgraded") and (card['Type'] not in ("Status", "Curse") or card['Name'] == 'Burn'), "That card is not upgradeable.")
+            upgrade_card = view.list_input('What card do you want to upgrade?', player.deck, view.upgrade_preview, lambda card: not card.upgraded and (card.type not in (CardType.CURSE, CardType.STATUS) or card.name == 'Burn'), "That card is not upgradeable.")
             player.deck[upgrade_card] = player.card_actions(player.deck[upgrade_card], 'Upgrade', items.cards)
             break
         if option == 'leave':
