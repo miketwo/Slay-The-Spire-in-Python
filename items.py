@@ -100,7 +100,7 @@ class Armaments(Card):
     def apply(self, origin):
         origin.blocking(card=self)
         if not self.upgraded and len(origin.hand) > 0:
-            chosen_card = view.list_input("Choose a card to upgrade", origin.hand, view.view_piles, lambda card: card.is_upgradeable(), "That card is not upgradeable.")
+            chosen_card = view.list_input("Choose a card to upgrade", origin.hand, view.view_piles, lambda card: card.upgradeable, "That card is not upgradeable.")
             origin.hand[chosen_card].upgrade()
         else:
             for card in (card for card in origin.hand if card.is_upgradeable()):

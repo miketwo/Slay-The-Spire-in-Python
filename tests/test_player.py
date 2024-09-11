@@ -19,6 +19,15 @@ def stats(player, enemy):
     ansiprint(f"<red>Enemy has {enemy.health} health, {enemy.block} block</red>")
 
 
+def test_relics_searchable_by_string_and_class():
+    # Create player with relics
+    player = entities.Player(health=100, block=0, max_energy=100, deck=[])
+    for relic in items.relics:
+      player.relics.append(relic)
+    assert "Burning Blood" in player.relics, "Should be able to find a relic by its string"
+    assert items.BurningBlood in player.relics, "Should be able to find a relic by its class"
+
+
 def test_all_attack_cards_with_all_relics(monkeypatch):
     '''A kind of crazy test that will load up a player with all cards and all
     relics and play them all against a boss. Sensitive to combat initialization details

@@ -74,7 +74,7 @@ class Player(Registerable):
 
     registers = [Message.END_OF_COMBAT, Message.START_OF_COMBAT, Message.START_OF_TURN, Message.END_OF_TURN, Message.ON_RELIC_ADD]
 
-    def __init__(self, health: int, block: int, max_energy: int, deck: list[Card], powers: list = None):
+    def __init__(self, health: int, block: int, max_energy: int, deck: list[Card], powers: list[Effect] = None):
         self.uid = uuid4()
         if not powers:
             powers = []
@@ -185,9 +185,9 @@ class Player(Registerable):
         else:
             raise ValueError(f"Invalid target type: {card.target}")
         bus.publish(Message.ON_CARD_PLAY, (self, card, target, enemies))
-        if (card.type == CardType.STATUS and items.relics["Medical Kit"] in self.player.relics):
+        if (card.type == CardType.STATUS and "MedicalKit" in self.relics):
             exhaust = True
-        elif (card.type == CardType.CURSE and items.relics["Blue Candle"] in self.player.relics):
+        elif (card.type == CardType.CURSE and items.BlueCandle in self.relics):
             self.take_sourceless_dmg(1)
             exhaust = True
         if pile is not None:
@@ -278,6 +278,9 @@ class Player(Registerable):
                         continue
                     ansiprint(f"{new_card['Name']} | <yellow>{new_card['Info']}</yellow>")
                     return new_card
+            else:
+                raise ValueError(f"Invalid action: {action}")
+                
 
     def move_card(self, card, move_to, from_location, cost_energy=False, shuffle=False):
         if cost_energy is True:
@@ -378,7 +381,7 @@ class Enemy(Registerable):
     registers = [Message.START_OF_TURN, Message.END_OF_TURN, Message.ON_DEATH_OR_ESCAPE]
     player = None
 
-    def __init__(self, health_range: list, block: int, name: str, powers: dict = None):
+    def __init__(self, health_range: list, block: int, name: str, powers: list[Effect] = None):
         self.uid = uuid4()
         if not powers:
             powers = []
@@ -397,7 +400,6 @@ class Enemy(Registerable):
         self.buffs = powers
         self.debuffs = []
         self.stolen_gold = 0
-        self.awake_turns = 0
         self.mode = ""
         self.flames = -1
         self.upgrade_burn = False
@@ -416,7 +418,7 @@ class Enemy(Registerable):
         return status
 
     def set_intent(self):
-        pass
+        raise NotImplementedError("set_intent() must be implemented in a subclass")
 
     def execute_move(self, player: Player, enemies: list["Enemy"]):
         moves = 1
@@ -455,7 +457,7 @@ class Enemy(Registerable):
                 status = parameters[0]
                 amount = parameters[1]
                 location = parameters[2].lower()
-                self.status(status, amount, location, player=player)
+                self.status(status_card=status, amount=amount, location=location, player=player)
             elif action == "Block":
                 block = parameters[0]
                 target = parameters[1] if len(parameters) > 1 else None
@@ -626,6 +628,7 @@ class Enemy(Registerable):
                     self.block = 0
                 ei.tick_effects(self)
                 print()
+                bus.publish(Message.BEFORE_SET_INTENT, (self, bus))
                 self.set_intent()
         elif message == Message.END_OF_TURN:
             player, enemies = data

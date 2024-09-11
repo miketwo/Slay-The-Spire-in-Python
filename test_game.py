@@ -1,3 +1,4 @@
+from __future__ import annotations
 import time
 import sys
 import pytest
@@ -7,13 +8,11 @@ import game
 import random
 from ansi_tags import ansiprint
 
+
 def replacement_clear_screen():
     '''Replacement for game.view.clear() so that I can see the test output'''
     print("\n--------------------------\n")
 
-def stats(player, enemy):
-    ansiprint(f"<yellow>Player has {player.health} health, {player.block} block, {player.energy} energy, {len(player.hand)} cards in hand, {len(player.draw_pile)} cards in draw pile, {len(player.discard_pile)} cards in discard pile, {len(player.exhaust_pile)} cards in exhaust pile</yellow>")
-    ansiprint(f"<red>Enemy has {enemy.health} health, {enemy.block} block</red>")
 
 def repeat_check(repeat_catcher, last_return, current_return) -> tuple[int, bool]:
     '''Check if the player is stuck in a loop
@@ -77,9 +76,9 @@ def test_e2e(monkeypatch):
 
     with monkeypatch.context() as m:
         m.setattr('builtins.input', patched_input)
-        m.setattr(helper, 'sleep', lambda x: None)
-        m.setattr(entities, 'sleep', lambda x: None)
-        m.setattr(game, 'sleep', lambda x: None)
+        # m.setattr(helper, 'sleep', lambda x: None)
+        # m.setattr(entities, 'sleep', lambda x: None)
+        # m.setattr(game, 'sleep', lambda x: None)
         helper.view.clear = replacement_clear_screen
         try:
             mygame.start()

@@ -42,4 +42,4 @@ def test_new_combat_basic(monkeypatch):
         helper.view.clear = replacement_clear_screen
 
         # Run combat
-        combat.combat(game_map)
+        combat.combat()

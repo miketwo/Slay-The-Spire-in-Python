@@ -5,7 +5,7 @@ from time import sleep
 import game_map
 import items
 from ansi_tags import ansiprint
-from definitions import CombatTier, EncounterType, State, TargetType
+from definitions import CombatTier, EncounterType, State, TargetType, CardType
 from enemy_catalog import (
     create_act1_boss,
     create_act1_elites,
@@ -16,6 +16,8 @@ from events import choose_event
 from helper import ei, gen, view
 from message_bus_tools import Message, bus
 from shop import Shop
+
+DEBUG = True
 
 
 class Game:
@@ -42,13 +44,13 @@ class Game:
         elif encounter.type == EncounterType.REST_SITE:
             return self.rest_site()
         elif encounter.type == EncounterType.UNKNOWN:
-            return self.unknown(self.game_map)
+            return self.unknown(game_map=self.game_map)
         elif encounter.type == EncounterType.BOSS:
-            return Combat(tier=CombatTier.BOSS, player=self.player, game_map=self.game_map).combat(game_map)
+            return Combat(tier=CombatTier.BOSS, player=self.player, game_map=self.game_map).combat()
         elif encounter.type == EncounterType.ELITE:
-            return Combat(tier=CombatTier.ELITE, player=self.player, game_map=self.game_map).combat(game_map)
+            return Combat(tier=CombatTier.ELITE, player=self.player, game_map=self.game_map).combat()
         elif encounter.type == EncounterType.NORMAL:
-            return Combat(tier=CombatTier.NORMAL, player=self.player, game_map=self.game_map).combat(game_map)
+            return Combat(tier=CombatTier.NORMAL, player=self.player, game_map=self.game_map).combat()
         elif encounter.type == EncounterType.SHOP:
             return Shop(self.player).loop()
         else:
@@ -107,8 +109,7 @@ class Game:
                     "What card do you want to upgrade?",
                     self.player.deck,
                     view.view_piles,
-                    lambda card: not card.upgraded
-                    and (card["Type"] not in ("Status", "Curse") or card.name == "Burn"),
+                    lambda card: not card.upgraded and (card.type not in (CardType.CURSE, CardType.STATUS) or card.name == "Burn"),
                     "That card is not upgradeable.",
                 )
                 self.player.deck[upgrade_card] = self.player.card_actions(self.player.deck[upgrade_card], "Upgrade", items.cards)
@@ -174,12 +175,17 @@ class Game:
             normal_combat = 0.1
             treasure_room += 0.02
             merchant += 0.03
-            Combat(self.player, CombatTier.NORMAL).combat()
+            Combat(self.player, CombatTier.NORMAL, game_map=game_map).combat()
         else:
             # Chooses an event if nothing else is chosen
             ansiprint(self.player)
             chosen_event = choose_event(game_map, self.player)
             chosen_event()
+
+def debug_stats(player: Player, enemies: list[Enemy]):
+    ansiprint(f"<yellow>Player has {player.health} health, {player.block} block, {player.energy} energy, {len(player.hand)} cards in hand, {len(player.draw_pile)} cards in draw pile, {len(player.discard_pile)} cards in discard pile, {len(player.exhaust_pile)} cards in exhaust pile</yellow>")
+    for enemy in enemies:
+        ansiprint(f"<red>{enemy.name} has {enemy.health} health, {enemy.block} block</red>")
 
 
 class Combat:
@@ -193,8 +199,9 @@ class Combat:
         self.turn = 1
         self.game_map = game_map
 
-    def combat(self, current_map) -> None:
+    def combat(self) -> None:
         """There's too much to say here."""
+        current_map = self.game_map
         self.start_combat()
         # Combat automatically ends when all enemies are dead.
         while len(self.active_enemies) > 0:
@@ -206,6 +213,9 @@ class Combat:
                     break
 
                 print(f"Turn {self.turn}: ")
+                if DEBUG:
+                    debug_stats(self.player, self.active_enemies)
+
                 # Shows the player's potions, cards(in hand), amount of cards in discard and draw pile, and shows the status for you and the enemies.
                 view.display_ui(self.player, self.active_enemies)
                 print("1-0: Play card, P: Play Potion, M: View Map, D: View Deck, A: View Draw Pile, S: View Discard Pile, X: View Exhaust Pile, E: End Turn, F: View Debuffs and Buffs")
@@ -242,6 +252,11 @@ class Combat:
                 self.end_combat(self, escaped=True)
             bus.publish(Message.END_OF_TURN, data=(self.player, self.all_enemies))
             self.turn += 1
+            # Assert that the player still has some cards (either in hand, draw pile, or discard pile)
+            # if not any((len(pile) > 0 for pile in (self.player.hand, self.player.draw_pile, self.player.discard_pile))):
+            #     debug_stats(self.player, self.active_enemies)
+            #     raise ValueError("ERROR: Player has no cards left.")
+
 
     def end_combat(self, killed_enemies=False, escaped=False, robbed=False):
         if killed_enemies is True:
