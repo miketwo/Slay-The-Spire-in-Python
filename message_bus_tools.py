@@ -41,7 +41,9 @@ class MessageBus():
     def __init__(self, debug=True):
         self.subscribers = dict(dict())  # noqa: C408
         self.debug = debug
-        self.death_messages = []
+        self.death_messages = []  # what is this?
+        self.unsubscribe_set = set()
+        self.lock_count = 0
 
     def subscribe(self, event_type: Message, callback, uid):
         if event_type not in self.subscribers:
@@ -50,18 +52,35 @@ class MessageBus():
         if self.debug:
             ansiprint(f"<basic>MESSAGEBUS</basic>: <blue>{event_type}</blue> | Subscribed <bold>{callback.__qualname__}</bold>")
 
+    def _clear_unsubscribes(self):
+        if self.lock_count > 0:
+            return
+        for event_type, uid in self.unsubscribe_set:
+            if self.debug:
+                ansiprint(f"<basic>MESSAGEBUS</basic>: Unsubscribing <bold>{self.subscribers[event_type][uid].__qualname__}</bold> from {', '.join(event_type).replace(', ', '')}")
+            self.unsubscribe(event_type, uid)
+        self.unsubscribe_set.clear()
+
     def unsubscribe(self, event_type, uid):
-        if self.debug:
-            ansiprint(f"<basic>MESSAGEBUS</basic>: Unsubscribed <bold>{self.subscribers[event_type][uid].__qualname__}</bold> from {', '.join(event_type).replace(', ', '')}")
-        del self.subscribers[event_type][uid]
+        if self.lock_count > 0:
+            if self.debug:
+                ansiprint(f"<basic>MESSAGEBUS</basic>: Locked. Adding <bold>{self.subscribers[event_type][uid].__qualname__}</bold> to unsubscribe list.")
+            self.unsubscribe_set.add((event_type, uid))
+        else:
+            if self.debug:
+                ansiprint(f"<basic>MESSAGEBUS</basic>: Unsubscribed <bold>{self.subscribers[event_type][uid].__qualname__}</bold> from {', '.join(event_type).replace(', ', '')}")
+            del self.subscribers[event_type][uid]
 
     def publish(self, event_type: Message, data):
+        self.lock_count += 1
         if event_type in self.subscribers:
             for uid, callback in self.subscribers[event_type].items():
                 _ = uid
                 if self.debug:
                     ansiprint(f"<basic>MESSAGEBUS</basic>: <blue>{event_type}</blue> | Calling <bold>{callback.__qualname__}</bold>")
                 callback(event_type, data)
+        self.lock_count -= 1
+        self._clear_unsubscribes()
         return data
 
 class Registerable():
@@ -181,6 +200,9 @@ class Card(Registerable):
         self.upgradeable = upgradeable
         self.removable = True
         self.upgrade_preview = f"{self.name} -> <green>{self.name + '+'}</green> | "
+
+    def upgrade(self):
+        raise NotImplementedError("Subclasses must implement this method")
 
     def changed_energy(self):
         return self.base_energy_cost != self.energy_cost
