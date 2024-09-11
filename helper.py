@@ -642,6 +642,31 @@ class Split(Effect):
                 del enemies[enemies.index(enemy)]
                 ansiprint(f"{self.name} split into 2 {split_into[self.name].name}s")
     
+
+class Artifact(Effect):
+    ''' Artifact is a buff that will negate the next Debuff on that unit.
+
+    Each stack of Icon Artifact Artifact can block 1 application of a Debuff. For example:
+
+    Bouncing Flask will remove 1 Icon Artifact Artifact with each bounce.
+    Envenom will remove 1 Icon Artifact Artifact with each unblocked Attack damage.
+    Shockwave and Crippling Cloud will remove up to 2 Icon Artifact Artifacts from each enemy, since they inflict 2 Debuffs.
+    Effects that apply multiple Debuffs will do so in the order listed on the card. For instance, if an enemy has 1 Icon Artifact Artifact and is hit by Shockwave, the card will apply Icon Weak Weak then apply Icon Vulnerable Vulnerable as per its description, and the enemy will lose 1 Icon Artifact Artifact to negate Icon Weak Weak and only has Icon Vulnerable Vulnerable inflicted on it.'''   
+    registers = [Message.BEFORE_APPLY_EFFECT]
+
+    def __init__(self, host, amount=1):
+        super().__init__(host, "Artifact", StackType.INTENSITY, EffectType.BUFF, "Negates the next Debuff on the target.", amount=amount)
+
+    def callback(self, message, data: tuple[Effect, Player, Player]):
+        if message == Message.BEFORE_APPLY_EFFECT:
+            print("Artifact effect activated")
+            effect, target, user = data
+            if effect.type == EffectType.DEBUFF and self.amount > 0:
+                effect.unsubscribe()
+                self.amount -= 1
+                ansiprint(f"{target.name} blocked {effect.name} with <buff>Artifact</buff>.")
+                return False
+            return True
 class EffectInterface:
     """Responsible for applying effects, creating buff/debuff dictionaries, and counting down certain effects"""
     def __init__(self):
