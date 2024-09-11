@@ -667,6 +667,25 @@ class Artifact(Effect):
                 ansiprint(f"{target.name} blocked {effect.name} with <buff>Artifact</buff>.")
                 return False
             return True
+
+class Asleep(Effect):
+    # The Lagavulin will start with the unique debuff "Asleep", as well as a Icon Metallicize Metallicize buff, preventing it from taking any action, but granting it 8 Icon Block Block at the start of every turn. The Lagavulin will awake at the end of its 3rd turn or when any HP damage is taken through the Icon Block Block, and will lose its Icon Metallicize Metallicize buff in the process. 
+    # When the Lagavulin wakes up by being attacked, it will be stunned for one turn. If the Lagavulin is left unharmed for three turns, it will wake up on its own and begin the fourth turn unstunned.
+    registers = [Message.START_OF_TURN, Message.ON_ATTACKED]
+
+    def __init__(self, host: Enemy, amount=3):
+        super().__init__(host, "Asleep", StackType.NONE, EffectType.DEBUFF, "Prevents the enemy from taking any action.", amount=amount)
+
+    def callback(self, message, data: tuple[Enemy, list[Enemy]]):
+        if message == Message.START_OF_TURN:
+            if self.amount > 0:
+                ei.apply_effect(self.host, None, Metallicize, 8)
+        elif message == Message.ON_ATTACKED:
+            enemy, enemies = data
+            enemy.debuffs.append(Stunned(enemy, 1))
+
+
+
 class EffectInterface:
     """Responsible for applying effects, creating buff/debuff dictionaries, and counting down certain effects"""
     def __init__(self):
