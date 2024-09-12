@@ -79,6 +79,26 @@ class TestMessageBus:
 
       callbackB.assert_called_once_with(10)
 
+  def test_can_subscribe_during_publish(self):
+      bus = MessageBus(debug=True)
+      def side_effect(*args, **kwargs):
+        bus.subscribe(Message.BEFORE_ATTACK, callbackB, 2)
+      callbackA = MagicMock(__qualname__="callbackA", side_effect=side_effect)
+      callbackB = MagicMock(__qualname__="callbackB")
+
+      bus.subscribe(Message.BEFORE_ATTACK, callbackA, 1)
+
+      bus.publish(Message.BEFORE_ATTACK, "data")
+
+      callbackA.assert_called_once_with(Message.BEFORE_ATTACK, "data")
+      callbackB.assert_not_called()
+
+      bus.publish(Message.BEFORE_ATTACK, "second time")
+
+      assert callbackA.call_count == 2, "Callback A should have been called twice"
+      callbackB.assert_called_once_with(Message.BEFORE_ATTACK, "second time") 
+
+
   def test_can_unsubscribe_during_publish(self):
       bus = MessageBus(debug=True)
       def side_effect(*args, **kwargs):

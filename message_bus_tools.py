@@ -43,14 +43,27 @@ class MessageBus():
         self.debug = debug
         self.death_messages = []  # what is this?
         self.unsubscribe_set = set()
+        self.subscribe_set = set()
         self.lock_count = 0
 
+    def _clear_subscribes(self):
+        if self.lock_count > 0:
+            return
+        for event_type, callback, uid in self.subscribe_set:
+            self.subscribe(event_type, callback, uid)
+        self.subscribe_set.clear()
+
     def subscribe(self, event_type: Message, callback, uid):
-        if event_type not in self.subscribers:
-            self.subscribers[event_type] = {}
-        self.subscribers[event_type][uid] = callback
-        if self.debug:
-            ansiprint(f"<basic>MESSAGEBUS</basic>: <blue>{event_type}</blue> | Subscribed <bold>{callback.__qualname__}</bold>")
+        if self.lock_count > 0:
+            if self.debug:
+                ansiprint(f"<basic>MESSAGEBUS</basic>: <blue>{event_type}</blue> | Locked. Adding <bold>{callback.__qualname__}</bold> to subscribe list.")
+            self.subscribe_set.add((event_type, callback, uid))
+        else:
+            if event_type not in self.subscribers:
+                self.subscribers[event_type] = {}
+            self.subscribers[event_type][uid] = callback
+            if self.debug:
+                ansiprint(f"<basic>MESSAGEBUS</basic>: <blue>{event_type}</blue> | Subscribed <bold>{callback.__qualname__}</bold>")
 
     def _clear_unsubscribes(self):
         if self.lock_count > 0:
@@ -81,6 +94,7 @@ class MessageBus():
                 callback(event_type, data)
         self.lock_count -= 1
         self._clear_unsubscribes()
+        self._clear_subscribes()
         return data
 
 class Registerable():
