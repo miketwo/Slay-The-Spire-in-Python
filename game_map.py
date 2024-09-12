@@ -89,9 +89,10 @@ class GameMap():
     def choice(self, choices):
       # Todo: move this to a helper function
       print()
-      for idx, choice in enumerate(choices):
-        print(f"{idx+1}: {choice}")
-      while True:
+
+      while True and len(choices) > 0:
+        for idx, choice in enumerate(choices):
+          print(f"{idx+1}: {choice}")        
         try:
           choice = int(input("Choose next encounter: "))
           if choice in range(1, len(choices)+1):
@@ -99,7 +100,8 @@ class GameMap():
           else:
              print(f"Choose between 1 and {len(choices)}")
         except ValueError:
-          print("Invalid choice")
+          print(f"Invalid choice. Must be a number between 1 and {len(choices)}")
+          continue
       return choices[choice-1]
 
     def __iter__(self):

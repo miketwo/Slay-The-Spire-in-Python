@@ -6,9 +6,23 @@ import items
 from entities import Enemy
 
 
+
+
+class Move:
+    # A move is a single action that an enemy can take. 
+    # It can be an attack, a buff, a debuff, a status effect, or a block.
+    def __init__(self, name: str, action: str, parameters: tuple):
+        self.name = name
+        self.action = action
+        self.parameters = parameters
+
+    def __str__(self):
+        return f"Move: {self.name} | {self.action} | {self.parameters}"
+
+
 class AcidSlimeL(Enemy):
     def __init__(self, ):
-        super().__init__([65, 69], 0, 'Acid Slime (L)', {"Split": True})
+        super().__init__([65, 69], 0, 'Acid Slime (L)', [helper.Split(self, 1)])
 
     def set_intent(self):
         move_roll = random.random()
@@ -16,7 +30,7 @@ class AcidSlimeL(Enemy):
             if self.health < math.floor(self.max_health * 0.5):
                 self.next_move, self.intent = [("Split", "Split")], "<yellow>Unknown</yellow>"
             elif move_roll <= 0.3 and self.move_spam_check("Corrosive Spit", 3):
-                self.next_move, self.intent = [("Corrosive Spit", "Attack", (11,)), ("Status", (items.Slimed, 2, "discard pile"))], "<aggresive>Attack</aggresive> Σ11 / <debuff>Debuff</debuff>"
+                self.next_move, self.intent = [("Corrosive Spit", "Attack", (11,)), ("Status", (items.Slimed(), 2, "discard pile"))], "<aggresive>Attack</aggresive> Σ11 / <debuff>Debuff</debuff>"
             elif 0.3 < move_roll < 0.7 and self.move_spam_check("Tackle", 2):
                 self.next_move, self.intent = [("Tackle", "Attack", (16,))], "<aggresive>Attack</aggresive> Σ16"
             elif 0.7 <= move_roll < 1 and self.move_spam_check("Lick", 2):
@@ -33,7 +47,7 @@ class AcidSlimeM(Enemy):
         while True:
             move_roll = random.random()
             if move_roll <= 0.3 and self.move_spam_check("Corrosive Spit", 3):
-                self.next_move, self.intent = [("Corrosive Spit", "Attack", (7,)), ("Status", (items.Slimed, 1, "discard pile"))], "<aggresive>Attack</aggresive> Σ11 / <debuff>Debuff</debuff>"
+                self.next_move, self.intent = [("Corrosive Spit", "Attack", (7,)), ("Status", (items.Slimed(), 1, "discard pile"))], "<aggresive>Attack</aggresive> Σ11 / <debuff>Debuff</debuff>"
             elif 0.3 < move_roll < 0.7 and self.move_spam_check("Tackle", 2):
                 self.next_move, self.intent = [("Tackle", "Attack", (10,))], "<aggresive>Attack</aggresive> Σ16"
             elif 0.7 <= move_roll < 1 and self.move_spam_check("Lick", 2):
@@ -44,7 +58,7 @@ class AcidSlimeM(Enemy):
 
 class AcidSlimeS(Enemy):
     def __init__(self, ):
-        super().__init__([8, 12], 0, "Acid Slime (S)", )
+        super().__init__([8, 12], 0, "Acid Slime (S)")
 
     def set_intent(self):
         while True:
@@ -63,7 +77,7 @@ class AcidSlimeS(Enemy):
 
 class SpikeSlimeL(Enemy):
     def __init__(self, ):
-        super().__init__([64, 70], 0, "Spike Slime (L)", {"Split": True})
+        super().__init__([64, 70], 0, "Spike Slime (L)", [helper.Split(self, 1)])
 
     def set_intent(self):
         while True:
@@ -71,7 +85,7 @@ class SpikeSlimeL(Enemy):
             if self.health < math.floor(self.max_health * 0.5):
                 self.next_move, self.intent = [("Split", "Split")], "<yellow>Unknown</yellow>"
             elif move_roll <= 0.3 and self.move_spam_check("Flame Tackle", 3):
-                self.next_move, self.intent = [("Flame Tackle", "Attack", (16,)), ("Status", (items.Slimed, 2, "discard pile"))], "<aggresive>Attack</aggresive> Σ16 / <debuff>Debuff</debuff>"
+                self.next_move, self.intent = [("Flame Tackle", "Attack", (16,)), ("Status", (items.Slimed(), 2, "discard pile"))], "<aggresive>Attack</aggresive> Σ16 / <debuff>Debuff</debuff>"
             elif move_roll < 0.3 and self.move_spam_check("Lick", 3):
                 self.next_move, self.intent = [("Lick", "Debuff", (helper.Frail, 2))], "<debuff>Debuff</debuff>"
             else:
@@ -86,7 +100,7 @@ class SpikeSlimeM(Enemy):
         while True:
             move_roll = random.random()
             if move_roll <= 0.3 and self.move_spam_check("Flame Tackle", 3):
-                self.next_move, self.intent = [("Flame Tackle", "Attack", (16,)), ("Status", (items.Slimed, 2, "discard pile"))], "<aggresive>Attack</aggresive> Σ16 / <debuff>Debuff</debuff>"
+                self.next_move, self.intent = [("Flame Tackle", "Attack", (16,)), ("Status", (items.Slimed(), 2, "discard pile"))], "<aggresive>Attack</aggresive> Σ16 / <debuff>Debuff</debuff>"
             elif move_roll < 0.3 and self.move_spam_check("Lick", 3):
                 self.next_move, self.intent = [("Lick", "Debuff", (helper.Frail, 2))], "<debuff>Debuff</debuff>"
             else:
@@ -164,7 +178,7 @@ class GreenLouse(Enemy):
 
 class FungiBeast(Enemy):
     def __init__(self, ):
-        super().__init__([22, 28], 0, "Fungi Beast", {"Spore Cloud": 2})
+        super().__init__([22, 28], 0, "Fungi Beast", [helper.SporeCloud(self, 2)])
 
     def set_intent(self):
         while True:
@@ -186,7 +200,7 @@ class FatGremlin(Enemy): # Fatass
 
 class MadGremlin(Enemy):
     def __init__(self, ):
-        super().__init__([20, 24], 0, "Mad Gremlin", {"Anger": 1})
+        super().__init__([20, 24], 0, "Mad Gremlin", [helper.Angry(self, 1)])
 
     def set_intent(self):
         self.next_move, self.intent = [("Scratch", "Attack", (4,))], "<aggresive>Attack</aggresive> 4"
@@ -229,7 +243,7 @@ class WizardGremlin(Enemy):
 class Looter(Enemy):
     def __init__(self, ):
         self.escaped = False
-        super().__init__([44, 48], 0, "Looter", {"Theivery": 15})
+        super().__init__([44, 48], 0, "Looter", [helper.Thievery(self,15)])
 
     def set_intent(self):
         while True:
@@ -253,7 +267,7 @@ class Looter(Enemy):
 class Mugger(Enemy):
     def __init__(self, ):
         self.escaped = False
-        super().__init__([44, 48], 0, "Looter", {"Theivery": 15})
+        super().__init__([44, 48], 0, "Looter", [helper.Thievery(self,15)])
 
     def set_intent(self):
         while True:
@@ -338,7 +352,7 @@ class GremlinNob(Enemy):
 
 class Lagavulin(Enemy):
     def __init__(self, ):
-        super().__init__([109, 111], 0, "Lagavulin", [helper.Asleep(3), helper.Metallicize(8)])
+        super().__init__([109, 111], 0, "Lagavulin", [helper.Asleep(host=self, amount=3), helper.Metallicize(host=self, amount=8)])
 
     def set_intent(self):
         # if self.debuffs["Asleep"]:
@@ -346,7 +360,7 @@ class Lagavulin(Enemy):
         # elif not self.debuffs['Asleep'] and self.health < self.max_health:
             # self.next_move, self.intent = [("Stunned", "Stunned")], "<yellow>Stunned</yellow>" # Fix later
         if self.active_turns % 3 == 0:
-            self.next_move, self.intent = [("Siphon Soul", "Debuff", ("Dexterity", -1)), ("Debuff", (helper.Strength, -1))], "<debuff>Debuff</debuff>"
+            self.next_move, self.intent = [("Siphon Soul", "Debuff", (helper.Dexterity, -1)), ("Debuff", (helper.Strength, -1))], "<debuff>Debuff</debuff>"
         else:
             self.next_move, self.intent = [("Attack", "Attack", (18,))], "<aggresive>Attack</aggresive> 18"
 
@@ -361,10 +375,10 @@ class Sentry(Enemy):
                 if self.state == 'Beam':
                     self.next_move, self.intent = [("Beam", "Attack", (9,))], "<aggresive>Attack</aggresive> 9"
                 elif self.state == 'Bolt':
-                    self.next_move, self.intent = [("Bolt", "Status", ("Dazed", 2, 'discard pile'))], "<debuff>Debuff</debuff>"
+                    self.next_move, self.intent = [("Bolt", "Status", (items.Dazed(), 2, 'discard pile'))], "<debuff>Debuff</debuff>"
             elif self.active_turns > 1:
                 if self.past_moves[-1] == 'Beam':
-                    self.next_move, self.intent = [("Bolt", "Status", ("Dazed", 2, 'discard pile'))], "<debuff>Debuff</debuff>"
+                    self.next_move, self.intent = [("Bolt", "Status", (items.Dazed(), 2, 'discard pile'))], "<debuff>Debuff</debuff>"
                 else:
                     self.next_move, self.intent = [("Beam", "Attack", (9,))], "<aggresive>Attack</aggresive> 9"
             else:
@@ -385,7 +399,7 @@ class SlimeBoss(Enemy):
     def set_intent(self):
         if self.active_turns in list(range(1, 50 + 1, 3)): # Goop turn
             print(f"Goop: {self.active_turns%3}")
-            self.next_move, self.intent = [("Goop Spray", "Status", (items.Slimed, 3, 'discard pile'))], "<debuff>Debuff</debuff>"
+            self.next_move, self.intent = [("Goop Spray", "Status", (items.Slimed(), 3, 'discard pile'))], "<debuff>Debuff</debuff>"
         elif self.active_turns in list(range(2, 50 + 1, 3)): # Preparing turns
             print(f"Preparing: {self.active_turns%3}")
             self.next_move, self.intent = [("Preparing", "Charging", ("Preparing."))], "<yellow>Unknown</yellow>"
@@ -426,12 +440,12 @@ class Hexaghost(Enemy):
     def __init__(self, ):
         self.flames = 0
         self.upgrade_burn = False
-        self.divider_dmg = (self.player.health / 12) + 1
+        self.divider_dmg = (self.player.health // 12) + 1
         super().__init__([250, 250], 0, "Hexaghost", )
 
     def set_intent(self):
         if self.active_turns == 1:
-            self.next_move, self.intent = [("Activate", "Charging", (""))], "<yellow>Unknown</yellow>"
+            self.next_move, self.intent = [("Activate", "Charging", ("..."))], "<yellow>Unknown</yellow>"
         elif self.active_turns == 2:
             self.next_move, self.intent = [("Divider", "Attack", (self.divider_dmg, 6))], f"<aggresive>Attack</aggresive> Σ{self.divider_dmg}x6"
         elif self.active_turns > 2:

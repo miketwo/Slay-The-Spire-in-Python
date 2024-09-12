@@ -39,7 +39,7 @@ class Displayer:
     def __init__(self):
         pass
 
-    def view_piles(self, pile: list[dict], shuffle=False, end=False, validator: Callable = lambda placehold: bool(placehold)):
+    def view_piles(self, pile: list[Card], shuffle=False, end=False, validator: Callable = lambda placehold: bool(placehold)):
         """Prints a numbered list of all the cards in a certain pile."""
         if len(pile) == 0:
             ansiprint("<red>This pile is empty</red>.")
@@ -113,6 +113,10 @@ class Displayer:
         """Allows the player to choose from a certain list of options. Includes validation."""
         if extra_allowables is None:
             extra_allowables = []
+        if len(choices) == 0:
+            ansiprint("<red>There are no choices to choose from.</red>")
+            sleep(1.5)
+            return None
         while True:
             try:
                 displayer(choices, validator=validator)
@@ -140,7 +144,7 @@ class Displayer:
         finished = False
         to_be_moved = []
         while not finished:
-            while True:
+            while True and len(choices) > 0:
                 try:
                     displayer(choices, validator=validator)
                     ansiprint(input_string + "(type 'exit' to finish) > ", end="")
@@ -354,11 +358,13 @@ class Strength(Effect):
 
     def callback(self, message, data):
         if message == Message.BEFORE_ATTACK:
-            user, _, damage_dealer = data
-            if 'Player' in str(user) and not isinstance(damage_dealer, int):
+            attacker, target, damage_dealer = data
+            if self.host == attacker:
                 damage_dealer.modify_damage(self.amount, f"<buff>Strength</buff>({self.amount:+d} dmg)")
+            elif self.host == target:
+                pass # The target has the Strength effect
             else:
-                damage_dealer += self.amount
+                pass # Neither attacker nor target has the Strength effect
 
 class StrengthDown(Effect):
     registers = [Message.END_OF_TURN]
@@ -377,11 +383,13 @@ class Vulnerable(Effect):
 
     def callback(self, message, data):
         if message == Message.BEFORE_ATTACK:
-            user, target, damage_dealer = data
-            if 'Player' in str(user) and not isinstance(damage_dealer, int):
+            attacker, target, damage_dealer = data
+            if self.host == attacker:
+                pass # The attacker is the one with the Vulnerable effect
+            elif self.host == target:
                 damage_dealer.modify_damage(math.floor(damage_dealer.damage * 0.5), "<debuff>Vulnerable</debuff>(x1.5 dmg)")
             else:
-                damage_dealer *= 2
+                pass # Neither attacker nor target has the Vulnerable effect
 
 class Weak(Effect):
     registers = [Message.BEFORE_ATTACK]
@@ -390,11 +398,13 @@ class Weak(Effect):
 
     def callback(self, message, data):
         if message == Message.BEFORE_ATTACK:
-            user, target, damage_dealer = data
-            if 'Player' in str(self.host) and not isinstance(damage_dealer, int) or getattr(damage_dealer, "modify_damage", None):
+            attacker, target, damage_dealer = data
+            if self.host == attacker:
                 damage_dealer.modify_damage(-math.floor(damage_dealer.damage * 0.25), "<debuff>Weak</debuff>(x0.75 dmg)")
+            elif self.host == target:
+                pass 
             else:
-                damage_dealer *= 0.75
+                pass
 
 class Frail(Effect):
     registers = [Message.BEFORE_BLOCK]
@@ -672,14 +682,84 @@ class Asleep(Effect):
     def __init__(self, host: Enemy, amount=3):
         super().__init__(host, "Asleep", StackType.NONE, EffectType.DEBUFF, "Prevents the enemy from taking any action.", amount=amount)
 
-    def callback(self, message, data: tuple[Enemy, list[Enemy]]):
+    def callback(self, message, data: Enemy):
         if message == Message.START_OF_TURN:
             if self.amount > 0:
                 ei.apply_effect(self.host, None, Metallicize, 8)
         elif message == Message.ON_ATTACKED:
-            enemy, enemies = data
-            enemy.debuffs.append(Stunned(enemy, 1))
+            target = data
+            self.host.debuffs.append(Stunned(self.host, 1))
 
+class Stunned(Effect):
+    # Stunned is a debuff that prevents the target from taking any action for a certain number of turns.
+    registers = [Message.AFTER_SET_INTENT]
+
+    def __init__(self, host, amount=1):
+        super().__init__(host, "Stunned", StackType.NONE, EffectType.DEBUFF, "Prevents the target from taking any action.", amount=amount)
+
+    def callback(self, message, data: PendingAction):
+        if message == Message.AFTER_SET_INTENT:
+            print("TBD: Stunned Effect")
+
+class Dexterity(Effect):
+    # Dexterity is a buff that increases the amount of Block gained from cards.
+    registers = [Message.BEFORE_BLOCK]
+
+    def __init__(self, host, amount):
+        super().__init__(host, "Dexterity", StackType.INTENSITY, EffectType.BUFF, "Increases the amount of Block gained from cards.", amount)
+
+    def callback(self, message, data: tuple[Player, Card]):
+        if message == Message.BEFORE_BLOCK:
+            player, card = data
+            card.modify_block(self.amount, f"<buff>Dexterity</buff>({self.amount:+d} block)", permanent=False)
+
+
+class SporeCloud(Effect):
+    # On death, applies X Icon Vulnerable Vulnerable to the player.
+    registers = [Message.ON_DEATH_OR_ESCAPE]
+
+    def __init__(self, host, amount=2):
+        super().__init__(host, "Spore Cloud", StackType.NONE, EffectType.DEBUFF, "On death, applies X Icon Vulnerable Vulnerable to the player.", amount=amount)
+
+    def callback(self, message, data: tuple[Enemy, list[Enemy]]):
+        if message == Message.ON_DEATH_OR_ESCAPE:
+            player, _ = data
+            ei.apply_effect(player, None, Vulnerable, self.amount)
+
+
+class Thievery(Effect):
+    # X Gold is stolen with every attack. Total Gold stolen is returned if the enemy is killed.
+    registers = [Message.AFTER_ATTACK, Message.ON_DEATH_OR_ESCAPE]
+
+    def __init__(self, host, amount=15):
+        super().__init__(host, "Thievery", StackType.NONE, EffectType.DEBUFF, "X Gold is stolen with every attack. Total Gold stolen is returned if the enemy is killed.", amount=amount)
+        self.stolen_gold = 0
+    
+    def callback(self, message, data: tuple[Player, int] | tuple[Enemy, list[Enemy]]):
+        if message == Message.AFTER_ATTACK:
+            attacker, target, dmg = data
+            if attacker == self.host:
+                target.gold -= self.amount
+                self.stolen_gold += self.amount
+                ansiprint(f"{attacker.name} stole {self.amount} gold from {target.name}.")
+        elif message == Message.ON_DEATH_OR_ESCAPE:
+            player, enemies, dead_entity = data
+            if dead_entity == self.host:
+                player.gold += self.stolen_gold
+                ansiprint(f"{player.name} received {self.stolen_gold} gold from {self.host.name}.")
+
+class Angry(Effect):
+    # Increases Strength by X when taking attack damage.
+    registers = [Message.AFTER_ATTACK]
+
+    def __init__(self, host, amount=1):
+        super().__init__(host, "Angry", StackType.INTENSITY, EffectType.BUFF, "Increases Strength by X when taking attack damage.", amount=amount)
+
+    def callback(self, message, data: tuple[Player, Enemy, int]):
+        if message == Message.AFTER_ATTACK:
+            attacker, target, dmg = data
+            if target == self.host:
+                ei.apply_effect(self.host, None, Strength, self.amount)
 
 
 class EffectInterface:

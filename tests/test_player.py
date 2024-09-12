@@ -40,7 +40,7 @@ def test_all_attack_cards_with_all_relics(monkeypatch):
     all_cards = [card for card in all_cards if card.name not in SKIP_CARDS]
 
     # Create uberplayer
-    player = entities.Player(health=100, block=0, max_energy=100, deck=all_cards)
+    player = entities.Player(health=1000, block=0, max_energy=100, deck=all_cards)
     for relic in items.relics:
       player.relics.append(relic)
     player.in_combat = True

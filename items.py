@@ -11,7 +11,7 @@ from definitions import CardType, DeepCopyTuple, PlayerClass, Rarity, State, Tar
 from message_bus_tools import Card, Message, Potion, Relic
 
 if TYPE_CHECKING:
-    from entities import Player
+    from entities import Player, Enemy
     from items import Card
 
 ei = helper.ei
@@ -190,7 +190,7 @@ class Flex(Card):
 
     def apply(self, origin):
         ei.apply_effect(origin, None, helper.Strength, self.strength)
-        ei.apply_effect(origin, None, "Strength Down", self.strength)
+        ei.apply_effect(origin, None, helper.StrengthDown, self.strength)
 
 class Havoc(Card):
     def __init__(self):
@@ -201,14 +201,17 @@ class Havoc(Card):
         self.upgrade_markers()
         self.energy_cost = 0
 
-    def apply(self, origin, enemies):
+    def apply(self, origin: Player, enemies):
+        if len(origin.draw_pile) == 0:
+            print("Your draw pile is empty.")
+            return
         top_card = origin.draw_pile[-1]
         if top_card.target in (TargetType.SINGLE, TargetType.YOURSELF):
-            origin.use_card(top_card, True, origin.draw_pile, random.choice(enemies))
+            origin.use_card(top_card, True, origin.draw_pile, enemies, random.choice(enemies))
         elif top_card.target in (TargetType.AREA, TargetType.ANY):
             origin.use_card(top_card, True, origin.draw_pile, enemies)
         else:
-            origin.use_card(top_card, True, origin.draw_pile, random.choice(enemies))
+            origin.use_card(top_card, True, origin.draw_pile, enemies, random.choice(enemies))
 
 class Headbutt(Card):
     def __init__(self):
@@ -248,8 +251,9 @@ class HeavyBlade(Card):
 
     def callback(self, message, data):
         if message == Message.BEFORE_ATTACK:
-            player, _, card = data
-            card.modify_damage(player.buffs['Strength'] * self.strength_multi, f"Heavy Blade(+{player.buffs['Strength'] * self.strength_multi} dmg)")
+            player, target, card = data
+            sum_of_strengths = sum([s.amount for s in player.buffs if s.name == "Strength"])
+            card.modify_damage(sum_of_strengths * self.strength_multi, f"Heavy Blade(+{sum_of_strengths * self.strength_multi} dmg)")
 
 class IronWave(Card):
     def __init__(self):
@@ -292,9 +296,10 @@ class PerfectedStrike(Card):
 
     def callback(self, message, data):
         if message == Message.BEFORE_ATTACK:
-            player = data
-            if len((card for card in player.hand if 'strike' in card.name.lower())) > 0:
-                extra_damage = len((card for card in player.hand if 'strike' in card.name.lower())) * self.dmg_per_strike
+            attacker, target, card = data
+            if self == card:
+                player: Player = attacker
+                extra_damage = len([card for card in player.hand if 'strike' in card.name.lower()]) * self.dmg_per_strike
                 self.modify_damage(extra_damage, f"Perfected Strike(+{extra_damage} dmg)")
 
 class PommelStrike(Card):
@@ -381,13 +386,17 @@ class TrueGrit(Card):
         self.base_block, self.block = 9, 9
         self.info = "Gain 9 <keyword>Block</keyword>. <keyword>Exhaust</keyword> a card in your hand."
 
-    def apply(self, origin):
+    def apply(self, origin: Player):
         origin.blocking(card=self)
         if self.upgraded is True:
             chosen_card = view.list_input("Choose a card to <keyword>Exhaust</keyword>", origin.hand, view.view_piles, lambda card: card.upgradeable is True and card.upgraded is False, "That card is either not upgradeable or is already upgraded.")
             origin.move_card(origin.hand[chosen_card], origin.exhaust_pile, origin.hand, False)
         else:
-            random_card = random.choice([card for card in origin.hand if card.upgradeable is True and card.upgraded is False])
+            options = [card for card in origin.hand if card is True and card.upgraded is False]
+            if len(options) == 0:
+                print("You have no cards to <keyword>Exhaust</keyword>.")
+                return
+            random_card = random.choice(options)
             origin.move_card(random_card, origin.exhaust_pile, origin.hand, False)
 
 class TwinStrike(Card):
@@ -585,10 +594,10 @@ class Dropkick(Card):
     def apply(self, origin, target):
         origin.attack(target, self)
 
-    def callback(self, message, data):
+    def callback(self, message, data: tuple[Player, Enemy, Card]):
         if message == Message.AFTER_ATTACK:
             player, enemy, _ = data
-            if enemy.debuffs['Vulnerable'] >= 1:
+            if "Vulnerable" in enemy.debuffs:
                 player.energy += 1
                 player.draw_cards(cards=1)
 
@@ -604,6 +613,9 @@ class DualWield(Card):
         self.info = "Create 2 copies of an <keyword>Attack</keyword> or <keyword>Power</keyword> card in your hand."
 
     def apply(self, origin):
+        if not any((card for card in origin.hand if card.type in (CardType.ATTACK, CardType.POWER))):
+            print("You have no Attack or Power cards in your hand.")
+            return
         chosen_card = view.list_input(f"Choose a card to make {'a copy' if self.copies == 1 else '2 copies'} of",
                                       origin.hand,
                                       view.view_piles,
@@ -729,7 +741,10 @@ class InfernalBlade(Card):
 
     def apply(self, origin):
         attack_cards = [card for card in cards if card.type == CardType.ATTACK]
-        origin.hand.append(random.choice(attack_cards).modify_energy_cost(0, "Set", True))
+        card = random.choice(attack_cards)
+        card = deepcopy(card)
+        card.modify_energy_cost(0, "Set", True)
+        origin.hand.append(card)
 
 class Inflame(Card):
     def __init__(self):
@@ -899,13 +914,21 @@ class Slimed(Card):
         super().__init__("Slimed", "<keyword>Exhaust</keyword>.", Rarity.COMMON, PlayerClass.IRONCLAD, CardType.STATUS, TargetType.YOURSELF, energy_cost=1)
         self.exhaust = True
         self.upgradeable = False
+        self.playable = True
 
     def apply(self, *args, **kwargs):
+        # Does nothing, just here to make the card playable.
         pass
+
 
 class Wound(Card):
     def __init__(self):
         super().__init__("Wound", "<keyword>Unplayable</keyword>.", Rarity.COMMON, PlayerClass.ANY, CardType.STATUS, TargetType.NOTHING)
+        self.playable = False
+
+class Dazed(Card):
+    def __init__(self):
+        super().__init__("Dazed", "<keyword>Unplayable</keyword>.", Rarity.COMMON, PlayerClass.ANY, CardType.STATUS, TargetType.NOTHING)
         self.playable = False
 #####---END OF CARDS SECTION---#####
 

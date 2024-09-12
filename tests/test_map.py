@@ -3,7 +3,7 @@ import pytest
 import random
 
 def patched_input(*args, **kwargs):
-    return random.randint(1, 4)
+    return str(random.randint(1, 4))
 
 def test_create_game_map(monkeypatch):
     # Patch some side effects

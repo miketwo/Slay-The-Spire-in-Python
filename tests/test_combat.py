@@ -17,6 +17,7 @@ def replacement_clear_screen():
     print("\n--------------------------\n")
 
 
+@pytest.mark.skip("We have a better end-to-end test now")
 def test_new_combat_basic(monkeypatch):
     entities.random.seed(123)
 

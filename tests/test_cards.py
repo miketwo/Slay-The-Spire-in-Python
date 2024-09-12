@@ -14,7 +14,6 @@ def get_all_cards() -> list[items.Card]:
 
 local_copy_of_cards = get_all_cards()
 
-@pytest.mark.only
 @pytest.mark.parametrize("card", local_copy_of_cards, ids=[card.name for card in local_copy_of_cards])
 def test_all_cards_can_upgrade(card):
     print(f"Upgrading   {card.name}")

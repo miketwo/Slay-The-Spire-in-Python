@@ -15,6 +15,16 @@ from typing import Callable
 ei = helper.ei
 view = helper.view
 
+class Damage:
+    def __init__(self, dmg: int):
+        self.damage = dmg
+    def modify_damage(self, change: int, context: str, *args, **kwargs):
+        new_dmg = self.damage + change
+        ansiprint(f"Damage modified from {self.damage} --> {new_dmg} by {context}.")
+        self.damage = new_dmg
+
+
+
 class PendingAction:
     '''
     A pending action is an action that is created before it is executed. It can be cancelled, modified, and executed.
@@ -57,6 +67,7 @@ class PendingAction:
     def __repr__(self):
         return self.__str__()
 
+
 class Player(Registerable):
     """
     Attributes:::
@@ -72,7 +83,12 @@ class Player(Registerable):
     max_potions: The max amount of potions the player can have
     """
 
-    registers = [Message.END_OF_COMBAT, Message.START_OF_COMBAT, Message.START_OF_TURN, Message.END_OF_TURN, Message.ON_RELIC_ADD]
+    registers = [Message.END_OF_COMBAT, 
+                 Message.START_OF_COMBAT, 
+                 Message.START_OF_TURN, 
+                 Message.END_OF_TURN, 
+                 Message.ON_RELIC_ADD,
+                 Message.ON_PLAYER_HEALTH_LOSS]
 
     def __init__(self, health: int, block: int, max_energy: int, deck: list[Card], powers: list[Effect] = None):
         self.uid = uuid4()
@@ -227,9 +243,9 @@ class Player(Registerable):
 
     def blocking(self, card: Card = None, block=0, context: str=None):
         """Gains [block] Block. Cards are affected by Dexterity and Frail."""
+        bus.publish(Message.BEFORE_BLOCK, (self, card))
         block = getattr(card, 'block', None) if card else block
         block_affected_by = ', '.join(getattr(card, 'block_affected_by', []) if card else [context])
-        bus.publish(Message.BEFORE_BLOCK, (self, card))
         self.block += block
         ansiprint(f"""{self.name} gained {block} <blue>Block</blue> from {block_affected_by}.""") # f-strings my beloved
         bus.publish(Message.AFTER_BLOCK, (self, card))
@@ -314,7 +330,7 @@ class Player(Registerable):
                 target.health -= dmg
                 ansiprint(f"You dealt {dmg} damage(<light-blue>{target.block} Blocked</light-blue>) to {target.name} with {' | '.join(card.damage_affected_by)}")
                 target.block = 0
-                bus.publish(Message.AFTER_ATTACK, (self, target, card))
+                bus.publish(Message.AFTER_ATTACK, (self, target, dmg))
                 if target.health <= 0:
                     target.die()
                 bus.publish(Message.ON_ATTACKED, (target))
@@ -341,7 +357,7 @@ class Player(Registerable):
             return
         ansiprint("<red>You Died</red>")
         input("Press enter > ")
-        sys.exit()
+        self.state = State.DEAD
 
     def callback(self, message, data: tuple):
         if message == Message.START_OF_COMBAT:
@@ -375,6 +391,12 @@ class Player(Registerable):
         elif message == Message.ON_RELIC_ADD:
             relic, _ = data
             relic.register(bus)
+        elif message == Message.ON_PLAYER_HEALTH_LOSS:
+            # Check if we're dead
+            enemy, player, damage = data
+            if player.health <= 0:
+                print(f"player.health: {player.health}")
+                player.die()
 
 
 class Enemy(Registerable):
@@ -462,6 +484,8 @@ class Enemy(Registerable):
                 block = parameters[0]
                 target = parameters[1] if len(parameters) > 1 else None
                 self.blocking(block, target)
+            else:
+                raise ValueError(f"Invalid action: {action}")
             sleep(0.2)
             moves += 1
         if display_name == "Inferno" and self.flames > -1:
@@ -479,6 +503,7 @@ class Enemy(Registerable):
         else:
             name, func_name = self.next_move[0]
         ansiprint(f"<bold>{name}</bold>")
+        print(f"self.next_move: {self.next_move}")
         sleep(0.6)
         if func_name == "Cowardly":
             ansiprint("<italic>Hehe. Thanks for the money.<italic>")
@@ -558,7 +583,9 @@ class Enemy(Registerable):
 
     def attack(self, dmg: int, times: int, target: Player):
         for _ in range(times):
-            bus.publish(Message.BEFORE_ATTACK, (self, dmg, target.block))
+            modifiable_dmg = Damage(dmg)
+            bus.publish(Message.BEFORE_ATTACK, (self, target, modifiable_dmg))  # allows for damage modification
+            dmg = modifiable_dmg.damage
             if dmg <= target.block:
                 target.block -= dmg
                 dmg = 0
@@ -569,8 +596,8 @@ class Enemy(Registerable):
                 ansiprint(f"{self.name} dealt {dmg}(<light-blue>{target.block} Blocked</light-blue>) damage to you.")
                 target.block = 0
                 target.health -= dmg
-                bus.publish(Message.ON_PLAYER_HEALTH_LOSS, None)
-            bus.publish(Message.AFTER_ATTACK, (self, dmg, target.block))
+                bus.publish(Message.ON_PLAYER_HEALTH_LOSS, (self, target, dmg))
+            bus.publish(Message.AFTER_ATTACK, (self, target, dmg))
         sleep(1)
 
     def remove_effect(self, effect_name, effect_type):
@@ -599,7 +626,7 @@ class Enemy(Registerable):
             "hand": player.hand,
         }
         pile = locations[location]
-        status_card = status_card()
+        assert isinstance(status_card, Card), f"status_card must be a Card. You passed {status_card} (type: {type(status_card)})."
         for _ in range(amount):
             upper_bound = len(location) - 1 if len(location) > 0 else 1
             insert_index = random.randint(0, upper_bound)

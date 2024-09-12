@@ -36,6 +36,9 @@ class Game:
         self.game_map.pretty_print()
         for encounter in self.game_map:
             self.play(encounter, self.game_map)
+            if self.player.state == State.DEAD:
+                ansiprint("<red>Exiting Game</red>")
+                return False
             self.player.floors += 1
             self.game_map.pretty_print()
 
@@ -179,7 +182,7 @@ class Game:
             normal_combat = 0.1
             treasure_room += 0.02
             merchant += 0.03
-            Combat(self.player, CombatTier.NORMAL, game_map=game_map).combat()
+            Combat(tier=CombatTier.NORMAL, player=self.player, game_map=game_map).combat()
         else:
             # Chooses an event if nothing else is chosen
             ansiprint(self.player)
@@ -208,7 +211,7 @@ class Combat:
         current_map = self.game_map
         self.start_combat()
         # Combat automatically ends when all enemies are dead.
-        while len(self.active_enemies) > 0:
+        while len(self.active_enemies) > 0 and self.player.state != State.DEAD:
             bus.publish(Message.START_OF_TURN, (self.turn, self.player))
             while True:
                 self.on_player_move()
@@ -354,6 +357,14 @@ class Combat:
             sleep(1)
             view.clear()
             return
+        
+        # Prevent player from using unplayable cards
+        if not card.playable:
+            ansiprint("<red>This card is unplayable.</red>")
+            sleep(1)
+            view.clear()
+            return
+        
         # Todo: Move to Velvet Choker relic
         if self.player.choker_cards_played == 6:
             ansiprint("You have already played 6 cards this turn!")

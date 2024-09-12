@@ -7,6 +7,7 @@ import entities
 import game
 import random
 from ansi_tags import ansiprint
+from entities import CardType
 
 
 def replacement_clear_screen():
@@ -26,7 +27,7 @@ def repeat_check(repeat_catcher, last_return, current_return) -> tuple[int, bool
         return repeat_catcher, True
     return repeat_catcher, False
 
-@pytest.mark.skip()
+
 def test_e2e(monkeypatch):
     '''Test the game from start to finish
     Plays with (more or less) random inputs to test the game.
@@ -43,9 +44,11 @@ def test_e2e(monkeypatch):
         nonlocal mygame
         nonlocal repeat_catcher
         nonlocal last_return
-        random_return = random.choice(['1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'rest', 'smith', 'view deck', 'leave'])
+        random_return = random.choice(['1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'rest', 'smith', 'view deck', 'leave', 'exit', 'lift', 'toke', 'dig'])
         player = mygame.player
-        possible_cards = [card for card in player.hand if card.energy_cost <= player.energy]
+        if player.state == entities.State.DEAD:
+            return '\n'
+        possible_cards = [card for card in player.hand if card.energy_cost <= player.energy and card.type != CardType.STATUS]
         if len(possible_cards) > 0:
             ret = str(random.randint(1, len(possible_cards)))
             repeat_catcher, check = repeat_check(repeat_catcher, last_return, ret)
@@ -59,7 +62,9 @@ def test_e2e(monkeypatch):
                 return random_return
 
         if player.energy == 0 and player.in_combat:
-            print("Player has no energy left")
+            print(f"Player has no energy left.")
+            from pprint import pprint
+            pprint(player.__dict__)
             repeat_catcher, check = repeat_check(repeat_catcher, last_return, 'e')
             if not check:
                 last_return = 'e'
