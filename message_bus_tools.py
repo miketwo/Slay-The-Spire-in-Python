@@ -93,8 +93,8 @@ class MessageBus():
                     ansiprint(f"<basic>MESSAGEBUS</basic>: <blue>{event_type}</blue> | Calling <bold>{callback.__qualname__}</bold>")
                 callback(event_type, data)
         self.lock_count -= 1
-        self._clear_unsubscribes()
         self._clear_subscribes()
+        self._clear_unsubscribes()
         return data
 
 class Registerable():
@@ -214,6 +214,7 @@ class Card(Registerable):
         self.upgradeable = upgradeable
         self.removable = True
         self.upgrade_preview = f"{self.name} -> <green>{self.name + '+'}</green> | "
+        self.playable = card_type not in (CardType.STATUS, CardType.CURSE)
 
     def upgrade(self):
         raise NotImplementedError("Subclasses must implement this method")
@@ -258,4 +259,5 @@ class Card(Registerable):
 
     def is_upgradeadble(self) -> bool:
         return not self.upgraded and (self.name == "Burn" or self.type not in (CardType.STATUS, CardType.CURSE))
-bus = MessageBus(debug=True)
+
+bus = MessageBus(debug=False)
