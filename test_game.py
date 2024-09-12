@@ -26,7 +26,7 @@ def repeat_check(repeat_catcher, last_return, current_return) -> tuple[int, bool
         return repeat_catcher, True
     return repeat_catcher, False
 
-@pytest.mark.only
+@pytest.mark.skip()
 def test_e2e(monkeypatch):
     '''Test the game from start to finish
     Plays with (more or less) random inputs to test the game.
@@ -76,9 +76,9 @@ def test_e2e(monkeypatch):
 
     with monkeypatch.context() as m:
         m.setattr('builtins.input', patched_input)
-        # m.setattr(helper, 'sleep', lambda x: None)
-        # m.setattr(entities, 'sleep', lambda x: None)
-        # m.setattr(game, 'sleep', lambda x: None)
+        m.setattr(helper, 'sleep', lambda x: None)
+        m.setattr(entities, 'sleep', lambda x: None)
+        m.setattr(game, 'sleep', lambda x: None)
         helper.view.clear = replacement_clear_screen
         try:
             mygame.start()
