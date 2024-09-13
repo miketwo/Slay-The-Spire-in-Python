@@ -5,6 +5,7 @@ import pytest
 import helper
 import entities
 import game
+import shop
 import random
 from ansi_tags import ansiprint
 from entities import CardType
@@ -28,12 +29,13 @@ def repeat_check(repeat_catcher, last_return, current_return) -> tuple[int, bool
     return repeat_catcher, False
 
 
-def test_e2e(monkeypatch):
+seeds = [0,1]
+@pytest.mark.parametrize("seed", seeds)
+def test_e2e(seed, monkeypatch):
     '''Test the game from start to finish
     Plays with (more or less) random inputs to test the game.
     Seems to find lots of bugs, but very hard to repeat.
     '''
-    seed = random.randrange(sys.maxsize)
     ansiprint(f"<red><bold>Seed for this run is: {seed}</bold></red>")
     mygame = game.Game(seed=seed)
     repeat_catcher = 0
@@ -63,8 +65,8 @@ def test_e2e(monkeypatch):
 
         if player.energy == 0 and player.in_combat:
             print(f"Player has no energy left.")
-            from pprint import pprint
-            pprint(player.__dict__)
+            # from pprint import pprint
+            # pprint(player.__dict__)
             repeat_catcher, check = repeat_check(repeat_catcher, last_return, 'e')
             if not check:
                 last_return = 'e'
@@ -84,6 +86,7 @@ def test_e2e(monkeypatch):
         m.setattr(helper, 'sleep', lambda x: None)
         m.setattr(entities, 'sleep', lambda x: None)
         m.setattr(game, 'sleep', lambda x: None)
+        m.setattr(shop, 'sleep', lambda x: None)
         helper.view.clear = replacement_clear_screen
         try:
             mygame.start()

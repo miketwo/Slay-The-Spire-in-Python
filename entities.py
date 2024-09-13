@@ -1,3 +1,4 @@
+from __future__ import annotations
 import math
 import random
 import sys
@@ -353,11 +354,12 @@ class Player(Registerable):
                 potion_index = self.potions.index(items.FairyInABottle())
             except ValueError:
                 potion_index = -1
-            self.player.health_actions(math.floor(self.player.max_health * self.potions[potion_index].hp_percent), "Heal")
+            self.health_actions(math.floor(self.max_health * self.potions[potion_index].hp_percent), "Heal")
             return
+        self.state = State.DEAD
+        bus.publish(Message.ON_DEATH_OR_ESCAPE, (self))
         ansiprint("<red>You Died</red>")
         input("Press enter > ")
-        self.state = State.DEAD
 
     def callback(self, message, data: tuple):
         if message == Message.START_OF_COMBAT:
@@ -562,6 +564,9 @@ class Enemy(Registerable):
         """
         print(f"{self.name} has died.")
         self.state = State.DEAD
+        for effect in self.buffs + self.debuffs:
+            effect.unsubscribe()
+        bus.publish(Message.ON_DEATH_OR_ESCAPE, (self))
 
     def debuff_and_buff_check(self):
         """
@@ -584,6 +589,9 @@ class Enemy(Registerable):
 
     def attack(self, dmg: int, times: int, target: Player):
         for _ in range(times):
+            if target.state == State.DEAD:
+                print(f"{self.name} halts attack: {target.name} is already dead.")
+                return
             modifiable_dmg = Damage(dmg)
             bus.publish(Message.BEFORE_ATTACK, (self, target, modifiable_dmg))  # allows for damage modification
             dmg = modifiable_dmg.damage
@@ -662,10 +670,16 @@ class Enemy(Registerable):
             player, enemies = data
             if self.state == State.ALIVE:
                 self.execute_move(player, enemies)
+            if self.health < 0:
+                self.die()
             # Needs to be expanded at some point
         elif message == Message.ON_DEATH_OR_ESCAPE:
-            event, bus = data
-            for effect in self.buffs + self.debuffs:
-                effect.unsubscribe()
-            bus.death_messages.append(event)
+            dying_object = data
+            self.handle_on_death_or_escape(dying_object)
+
+    def handle_on_death_or_escape(self, dying_entity: Player|"Enemy"):
+        if self.state == State.DEAD:
+            return
+        print(f"{self.name} observes the death of {dying_entity.name}.")
+
 

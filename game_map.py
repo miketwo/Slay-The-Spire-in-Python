@@ -98,10 +98,9 @@ class GameMap():
           if choice in range(1, len(choices)+1):
             break
           else:
-             print(f"Choose between 1 and {len(choices)}")
+            print(f"Choose between 1 and {len(choices)}")
         except ValueError:
           print(f"Invalid choice. Must be a number between 1 and {len(choices)}")
-          continue
       return choices[choice-1]
 
     def __iter__(self):

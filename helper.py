@@ -550,12 +550,12 @@ class Metallicize(Effect):
     registers = [Message.END_OF_TURN]
 
     def __init__(self, host, amount=3):
-        super().__init__(host, "Metallicize", StackType.INTENSITY, EffectType.BUFF, "At the end of your turn, gain 3 <keyword>Block</keyword>.", amount)
+        super().__init__(host, "Metallicize", StackType.INTENSITY, EffectType.BUFF, "At the end of your turn, gain 3 <keyword>Block</keyword>.", amount, one_turn=True)
 
     def callback(self, message, data: tuple[Player, list[Enemy]]):
         if message == Message.END_OF_TURN:
             player, enemies = data
-            player.blocking(block=self.amount, context=self.name)
+            player.blocking(block=self.amount, context=f"{self.name}{self.amount}")
 
 
 class Rage(Effect):

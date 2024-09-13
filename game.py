@@ -28,14 +28,16 @@ class Game:
         self.player = Player.create_player()
         Enemy.player = self.player
         self.game_map: list = None
-
-    def start(self):
         if self.seed is not None:
             random.seed(self.seed)
+
+    def start(self):
         self.game_map = game_map.create_first_map()
         self.game_map.pretty_print()
         for encounter in self.game_map:
+            self.current_encounter = encounter
             self.play(encounter, self.game_map)
+            self.current_encounter = None
             if self.player.state == State.DEAD:
                 ansiprint("<red>Exiting Game</red>")
                 return False
@@ -206,64 +208,71 @@ class Combat:
         self.turn = 1
         self.game_map = game_map
 
-    def combat(self) -> None:
-        """There's too much to say here."""
-        current_map = self.game_map
-        self.start_combat()
-        # Combat automatically ends when all enemies are dead.
-        while len(self.active_enemies) > 0 and self.player.state != State.DEAD:
-            bus.publish(Message.START_OF_TURN, (self.turn, self.player))
-            while True:
-                self.on_player_move()
-                if all((enemy.state == State.DEAD for enemy in self.all_enemies)):
-                    self.end_combat(killed_enemies=True)
-                    break
+    def end_combat_conditions(self):
+        '''Returns True if one or more of the end combat conditions are met.'''
+        return self.player.state in (State.DEAD, State.ESCAPED) or \
+            all((enemy.state == State.DEAD for enemy in self.all_enemies))
 
-                print(f"Turn {self.turn}: ")
-                if DEBUG:
-                    debug_stats(self.player, self.active_enemies)
+    def combat_turn(self) -> tuple[bool, bool, bool]:
+        '''Executes 1 complete turn of combat.
+        Returns a tuple of booleans representing:
+            - killed_enemies: True if all enemies are dead.
+            - escaped: True if the player escaped.
+            - robbed: True if the player was robbed.
+        '''
+        while True:
+            if all((enemy.state == State.DEAD for enemy in self.all_enemies)):
+                return True, False, False
 
-                # Shows the player's potions, cards(in hand), amount of cards in discard and draw pile, and shows the status for you and the enemies.
-                view.display_ui(self.player, self.active_enemies)
-                print("1-0: Play card, P: Play Potion, M: View Map, D: View Deck, A: View Draw Pile, S: View Discard Pile, X: View Exhaust Pile, E: End Turn, F: View Debuffs and Buffs")
-                action = input("> ").lower()
-                other_options = {
-                    "d": lambda: view.view_piles(self.player.deck, end=True),
-                    "a": lambda: view.view_piles(
-                        self.player.draw_pile, shuffle=True, end=True
-                    ),
-                    "s": lambda: view.view_piles(self.player.discard_pile, end=True),
-                    "x": lambda: view.view_piles(self.player.exhaust_pile, end=True),
-                    "p": self.play_potion,
-                    "f": lambda: ei.full_view(self.player, self.active_enemies),
-                    "m": lambda: view.view_map(current_map),
-                }
-                if action.isdigit():
-                    option = int(action) - 1
-                    if option + 1 in range(len(self.player.hand) + 1):
-                        self.play_new_card(self.player.hand[option])
-                    else:
-                        view.clear()
-                        continue
-                elif action in other_options:
-                    other_options[action]()
-                elif action == "e":
-                    view.clear()
-                    break
+            if self.player.state == State.ESCAPED:
+                return False, True, False
+
+            self.on_player_move()
+            print(f"Turn {self.turn}: ")
+            if DEBUG:
+                debug_stats(self.player, self.active_enemies)
+
+            # Shows the player's potions, cards(in hand), amount of cards in discard and draw pile, and shows the status for you and the enemies.
+            view.display_ui(self.player, self.active_enemies)
+            print("1-0: Play card, P: Play Potion, M: View Map, D: View Deck, A: View Draw Pile, S: View Discard Pile, X: View Exhaust Pile, E: End Turn, F: View Debuffs and Buffs")
+            action = input("> ").lower()
+            other_options = {
+                "d": lambda: view.view_piles(self.player.deck, end=True),
+                "a": lambda: view.view_piles(
+                    self.player.draw_pile, shuffle=True, end=True
+                ),
+                "s": lambda: view.view_piles(self.player.discard_pile, end=True),
+                "x": lambda: view.view_piles(self.player.exhaust_pile, end=True),
+                "p": self.play_potion,
+                "f": lambda: ei.full_view(self.player, self.active_enemies),
+                "m": lambda: view.view_map(self.game_map),
+            }
+            if action.isdigit():
+                option = int(action) - 1
+                if option + 1 in range(len(self.player.hand) + 1):
+                    self.play_new_card(self.player.hand[option])
                 else:
                     view.clear()
                     continue
-                sleep(1)
+            elif action in other_options:
+                other_options[action]()
+            elif action == "e":
                 view.clear()
-            if self.player.state == State.ESCAPED:
-                self.end_combat(self, escaped=True)
+                return False, False, False
+            else:
+                view.clear()
+                continue
+
+    def combat(self) -> None:
+        """This is actually pretty straightforward now."""
+        current_map = self.game_map
+        self.start_combat()
+        while not self.end_combat_conditions():
+            bus.publish(Message.START_OF_TURN, (self.turn, self.player))
+            killed, escaped, robbed = self.combat_turn()
             bus.publish(Message.END_OF_TURN, data=(self.player, self.all_enemies))
             self.turn += 1
-            # Assert that the player still has some cards (either in hand, draw pile, or discard pile)
-            # if not any((len(pile) > 0 for pile in (self.player.hand, self.player.draw_pile, self.player.discard_pile))):
-            #     debug_stats(self.player, self.active_enemies)
-            #     raise ValueError("ERROR: Player has no cards left.")
-
+        self.end_combat(killed_enemies=killed, escaped=escaped, robbed=robbed)
 
     def end_combat(self, killed_enemies=False, escaped=False, robbed=False):
         if killed_enemies is True:
@@ -291,7 +300,7 @@ class Combat:
             view.clear()
         bus.publish(Message.END_OF_COMBAT, (self.tier, self.player))
         self.player.unsubscribe()
-        for enemy in self.active_enemies:
+        for enemy in self.active_enemies + self.all_enemies:
             enemy.unsubscribe()
 
     def on_player_move(self):
