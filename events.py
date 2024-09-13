@@ -171,7 +171,7 @@ def event_Lab(player):
 Why do you know the name of all these tools? It doesn't matter, you take a look around.""")
     ansiprint("<bold>[Search]</bold> <green>Obtain 3 random potions</green>")
     input('Press enter > ')
-    gen.claim_potions(True, 3, player, items.potions)
+    gen.claim_potions(True, 3, player, items.create_all_potions())
 
 # Won't add the Match and Keep event because i just don't know how to.
 
@@ -186,14 +186,14 @@ def event_OminousForge(player):
         option = input('> ').lower()
         if option == 'forge':
             option = view.list_input("What card do you want to upgrade? > ", player.deck, view.upgrade_preview, lambda card: not card.upgraded and (card.name == "Burn" or card.type not in (CardType.CURSE, CardType.STATUS)), "That card is not upgradeable.")
-            player.deck[option] = player.card_actions(player.deck[option], "Upgrade", items.cards)
+            player.deck[option] = player.card_actions(player.deck[option], "Upgrade", items.create_all_cards())
             break
         if option == 'rummage':
             ansiprint('''You decide to see if you can find anything of use. After uncovering tarps, looking through boxes, and checking nooks and crannies, you find a dust covered <yellow>relic!</yellow>.
 
 Taking the relic, you can't shake a sudden feeling of <red>sharp pain</red> as you exit the hut. Maybe you disturbed some sort of spirit?''')
-            gen.claim_relics(False, player, 1, items.relics, [items.WarpedTongs()])
-            gen.card_rewards(CombatTier.NORMAL, False, player, items.cards, [items.Pain()])
+            gen.claim_relics(False, player, 1, items.create_all_relics(), [items.WarpedTongs()])
+            gen.card_rewards(CombatTier.NORMAL, False, player, items.create_all_cards(), [items.Pain()])
             break
     input('Press enter to continue > ')
     sleep(1)
@@ -211,7 +211,7 @@ def event_Purifier(player):
         if option == 'pray':
             view.view_piles(player.deck, player, False, 'Removable')
             remove_card = view.list_input('What card do you want to remove?', player.deck, view.view_piles, lambda card: card.get("Removable") is False, "That card is not removable.")
-            player.deck[remove_card] = player.card_actions(player.deck[remove_card], 'Remove', items.cards)
+            player.deck[remove_card] = player.card_actions(player.deck[remove_card], 'Remove', items.create_all_cards())
             print('As you kneel in reverence, you feel a weight lifted off your shoulders.')
             break
         if option == 'leave':
@@ -236,7 +236,7 @@ def event_Transmogrifier(player):
         if option == 'pray':
             view.view_piles(player.deck, player, False, 'Removable')
             transform_card = view.list_input('What card would you like to transform?', player.deck, view.view_piles, lambda card: card.get("Removable") is False, "That card is not transformable.")
-            player.deck[transform_card] = player.card_actions(player.deck[transform_card], 'Transform', items.cards)
+            player.deck[transform_card] = player.card_actions(player.deck[transform_card], 'Transform', items.create_all_cards())
             print('As the power of the shrine flows through you, your mind feels altered.')
             break
         if option == 'leave':
@@ -261,7 +261,7 @@ def event_UpgradeShrine(player):
         if option == 'pray':
             view.upgrade_preview(player.deck)
             upgrade_card = view.list_input('What card do you want to upgrade?', player.deck, view.upgrade_preview, lambda card: not card.upgraded and (card.type not in (CardType.CURSE, CardType.STATUS) or card.name == 'Burn'), "That card is not upgradeable.")
-            player.deck[upgrade_card] = player.card_actions(player.deck[upgrade_card], 'Upgrade', items.cards)
+            player.deck[upgrade_card] = player.card_actions(player.deck[upgrade_card], 'Upgrade', items.create_all_cards())
             break
         if option == 'leave':
             print('You ignore the shrine.')
@@ -289,7 +289,7 @@ You eye him suspiciously and consider your options...""")
         ansiprint("<bold>[Give Potion]</bold> <red>Lose a potion.</red> <green>Recieve a relic.</green> \n<bold>[Give Gold]</bold> <red>Lose a varying amount of gold.</red> <green>Recieve a relic.</green> \n<bold>[Give Card]</bold> <red>Lose a card.</red> <green>Recieve a relic.</green> \n<bold>[Attack]</bold> Nothing happens.")
         option = input('> ').lower()
         if 'give' in option:
-            relic_rewards = [relic for relic in items.relics if relic.get('Rarity') in ('Common', 'Uncommon', 'Rare')]
+            relic_rewards = [relic for relic in items.create_all_relics() if relic.get('Rarity') in ('Common', 'Uncommon', 'Rare')]
             if 'potion' in option:
                 if len(player.potions) == 0:
                     print("You don't have any potions.")
@@ -344,7 +344,7 @@ He runs away.''')
 
 
 def event_TheWomanInBlue(player):
-    valid_potions = {potion: stats for potion, stats in items.potions.items() if stats.get('Class') == player.player_class}
+    valid_potions = {potion: stats for potion, stats in items.create_all_potions().items() if stats.get('Class') == player.player_class}
     while True:
         ansiprint('<bold>The Woman in Blue</bold>')
         sleep(0.8)
@@ -377,8 +377,8 @@ You exit the shop cautiously.''')
 
 
 def event_FaceTrader(player):
-    face_relics = [items.relics['Cultist Headpiece'], items.relics['Face of Cleric'],
-                   items.relics['Ssserpent Head'], items.relics['Gremlin Visage'], items.relics["N'loth's Hungry Face"]]
+    face_relics = [items.create_all_relics()['Cultist Headpiece'], items.create_all_relics()['Face of Cleric'],
+                   items.create_all_relics()['Ssserpent Head'], items.create_all_relics()['Gremlin Visage'], items.create_all_relics()["N'loth's Hungry Face"]]
     while True:
         ansiprint('<bold>Face Trader</bold>\n')
         sleep(0.8)
@@ -409,7 +409,7 @@ During this, his mask falls off and shatters. Screaming, he quickly covers his f
 His face was completely blank.''')
             break
         if option == 'trade':
-            gen.claim_relics(False, player, 1, items.relics, [random.choice(face_relics)], False)
+            gen.claim_relics(False, player, 1, items.create_all_relics(), [random.choice(face_relics)], False)
             sleep(0.8)
             ansiprint('''<bold>Eerie Man</bold>: "For me? <italic>FOR ME?</italic> Oh yes.. Yes. Yes.. mmm..."
 
@@ -438,7 +438,7 @@ What do you do?''')
         print()
         sleep(0.8)
         ansiprint(f'<bold>[Banana]</bold> <green>Heal {math.floor(player.max_health / 3)} HP</green> \n<bold>[Donut]</bold> <green>Max HP +5</green> \n<bold>[Box]</bold> <green>Recieve a relic.</green> <red>Become Cursed: <bold>Regret</bold></red>')
-        ansiprint(f'<keyword>Regret</keyword> | <yellow>{items.cards["Regret"]["Info"]}</yellow>') # curse is purple
+        ansiprint(f'<keyword>Regret</keyword> | <yellow>{items.create_all_cards()["Regret"]["Info"]}</yellow>') # curse is purple
         option = input('> ').lower()
         if option == 'banana':
             ansiprint('You eat the <yellow>banana</yellow>. It is nutritious and slightly <light-blue>magical</light-blue>, healing you.')
@@ -453,7 +453,7 @@ What do you do?''')
         if option == 'box':
             ansiprint('You grab the box. Inside you find a <yellow>relic</yellow>! \nHowever, you really craved the donut... \nYou are filled with sadness, but mostly <red>regret</red>.')
             sleep(1.3)
-            gen.claim_relics(False, player, 1, items.relics, None, False)
+            gen.claim_relics(False, player, 1, items.create_all_relics(), None, False)
             player.deck.append(items.Regret())
             ansiprint(f'You obtained <magenta>Regret</magenta> | {items.Regret().info}')
         sleep(1.5)
@@ -498,7 +498,7 @@ def event_TheCleric(player):
 The creature grins.
 
 <bold>Cleric</bold>: "Cleric talented. Have a good day!"''')
-            player.deck[option] = player.card_actions(player.deck[option], "Remove", items.cards)
+            player.deck[option] = player.card_actions(player.deck[option], "Remove", items.create_all_cards())
             break
         if option == 'leave':
             ansiprint("You don't trust this <light-blue>'Cleric'</light-blue>, so you leave.")
@@ -524,7 +524,7 @@ You're sure you don't see any traps nearby.\n""")
             view.clear()
             continue
         if option == 'take':
-            gen.claim_relics(False, player, 1, items.relics, [items.GoldenIdol], False)
+            gen.claim_relics(False, player, 1, items.create_all_relics(), [items.GoldenIdol], False)
             ansiprint("""As you grab the idol and stow it away, a giant boulder smashes through the ceiling into the ground next to you.
 
 You realize that the floor is slanted downwards as the boulder starts to roll towards you.""")
@@ -534,7 +534,7 @@ You realize that the floor is slanted downwards as the boulder starts to roll to
                 ansiprint("""<italic>RUUUUUUUUUUUUUUUN!</italic>
 
 You barely leap into a side passageway as the boulder rushes by. Unfortunatly, it feels like you sprained something.""")
-                gen.card_rewards("Normal", False, player, items.cards, [items.Injury()])
+                gen.card_rewards("Normal", False, player, items.create_all_cards(), [items.Injury()])
                 break
             if option == 'smash':
                 player.take_sourceless_dmg(math.floor(player.max_health * 0.25))
