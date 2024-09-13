@@ -531,6 +531,7 @@ class FireBreathing(Effect):
             if card.type == CardType.ATTACK:
                 for enemy in enemies:
                     enemy.health -= self.amount
+                    ansiprint(f"{enemy.name} took {self.amount} damage from <buff>Fire Breathing</buff>.")
 
 class FlameBarrier(Effect):
     # "Gain 12 <keyword>Block</keyword>. Whenever you're attacked this turn, deal 4 damage back."
