@@ -80,9 +80,10 @@ class MessageBus():
                 ansiprint(f"<basic>MESSAGEBUS</basic>: Locked. Adding <bold>{self.subscribers[event_type][uid].__qualname__}</bold> to unsubscribe list.")
             self.unsubscribe_set.add((event_type, uid))
         else:
-            if self.debug:
-                ansiprint(f"<basic>MESSAGEBUS</basic>: Unsubscribed <bold>{self.subscribers[event_type][uid].__qualname__}</bold> from {', '.join(event_type).replace(', ', '')}")
-            del self.subscribers[event_type][uid]
+            if uid in self.subscribers[event_type]:
+                if self.debug:
+                    ansiprint(f"<basic>MESSAGEBUS</basic>: Unsubscribed <bold>{self.subscribers[event_type][uid].__qualname__}</bold> from {', '.join(event_type).replace(', ', '')}")
+                del self.subscribers[event_type][uid]
 
     def publish(self, event_type: Message, data):
         self.lock_count += 1

@@ -45,6 +45,22 @@ class TestMessageBus:
     bus.publish(Message.START_OF_COMBAT, "should not receive")
     callback.assert_called_once_with(Message.START_OF_COMBAT, "should receive")
 
+  def test_bus_can_unsubscribe_twice(self):
+    bus = MessageBus(debug=True)
+    callback = MagicMock(__qualname__="callback")
+
+    bus.subscribe(Message.START_OF_COMBAT, callback, 1)
+    bus.publish(Message.START_OF_COMBAT, "should receive")
+    callback.assert_called_once_with(Message.START_OF_COMBAT, "should receive")
+
+    bus.unsubscribe(Message.START_OF_COMBAT, 1)
+    bus.publish(Message.START_OF_COMBAT, "should not receive")
+    callback.assert_called_once_with(Message.START_OF_COMBAT, "should receive")
+
+    bus.unsubscribe(Message.START_OF_COMBAT, 1)
+    bus.publish(Message.START_OF_COMBAT, "should not receive")
+    callback.assert_called_once_with(Message.START_OF_COMBAT, "should receive")
+
   def test_bus_can_subscribe_twice_with_same_uid_and_second_one_overwrites_first(self):
       bus = MessageBus(debug=True)
       callbackA = MagicMock(__qualname__="callbackA")
