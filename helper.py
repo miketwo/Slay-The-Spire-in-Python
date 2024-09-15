@@ -126,7 +126,7 @@ class Displayer:
                     return response
                 option = int(response) - 1
                 if not validator(choices[option]):
-                    
+
                     ansiprint(f"\n<red>{message_when_invalid}</red>")
                     sleep(1.5)
                     continue
@@ -402,7 +402,7 @@ class Weak(Effect):
             if self.host == attacker:
                 damage_dealer.modify_damage(-math.floor(damage_dealer.damage * 0.25), "<debuff>Weak</debuff>(x0.75 dmg)")
             elif self.host == target:
-                pass 
+                pass
             else:
                 pass
 
@@ -414,7 +414,8 @@ class Frail(Effect):
     def callback(self, message, data):
         if message == Message.BEFORE_BLOCK:
             _, card = data
-            card.modify_block(-math.floor(card.block * 0.25), "<debuff>Frail</debuff>(x0.75 block)")
+            if card is not None:
+                card.modify_block(-math.floor(card.block * 0.25), "<debuff>Frail</debuff>(x0.75 block)")
 
 class CurlUp(Effect):
     registers = [Message.ON_ATTACKED]
@@ -472,6 +473,7 @@ class NoDraw(Effect):
     def callback(self, message, data: tuple[Player, PendingAction]):
         if message == Message.BEFORE_DRAW:
             player, action = data
+            ansiprint(f"{player.name} cannot draw any more cards because of <debuff>No Draw</debuff>.")
             action.cancel(reason="You cannot draw any cards because of <debuff>No Draw</debuff>.")
         if message == Message.END_OF_TURN:
             self.unsubscribe()
@@ -622,7 +624,7 @@ class Split(Effect):
 
     def __init__(self, host, amount=0):
         super().__init__(host, "Split", StackType.NONE, EffectType.BUFF, "When activated, splits into two smaller enemies.", amount=amount)
-    
+
     def callback(self, message, data: tuple[Enemy, list[Enemy]]):
         if message == Message.ON_DEATH_OR_ESCAPE:
             print("Split effect activated")
@@ -648,7 +650,7 @@ class Split(Effect):
                     enemies.append(new_enemy)
                 del enemies[enemies.index(enemy)]
                 ansiprint(f"{self.name} split into 2 {split_into[self.name].name}s")
-    
+
 
 class Artifact(Effect):
     ''' Artifact is a buff that will negate the next Debuff on that unit.
@@ -658,7 +660,7 @@ class Artifact(Effect):
     Bouncing Flask will remove 1 Icon Artifact Artifact with each bounce.
     Envenom will remove 1 Icon Artifact Artifact with each unblocked Attack damage.
     Shockwave and Crippling Cloud will remove up to 2 Icon Artifact Artifacts from each enemy, since they inflict 2 Debuffs.
-    Effects that apply multiple Debuffs will do so in the order listed on the card. For instance, if an enemy has 1 Icon Artifact Artifact and is hit by Shockwave, the card will apply Icon Weak Weak then apply Icon Vulnerable Vulnerable as per its description, and the enemy will lose 1 Icon Artifact Artifact to negate Icon Weak Weak and only has Icon Vulnerable Vulnerable inflicted on it.'''   
+    Effects that apply multiple Debuffs will do so in the order listed on the card. For instance, if an enemy has 1 Icon Artifact Artifact and is hit by Shockwave, the card will apply Icon Weak Weak then apply Icon Vulnerable Vulnerable as per its description, and the enemy will lose 1 Icon Artifact Artifact to negate Icon Weak Weak and only has Icon Vulnerable Vulnerable inflicted on it.'''
     registers = [Message.BEFORE_APPLY_EFFECT]
 
     def __init__(self, host, amount=1):
@@ -676,7 +678,7 @@ class Artifact(Effect):
             return True
 
 class Asleep(Effect):
-    # The Lagavulin will start with the unique debuff "Asleep", as well as a Icon Metallicize Metallicize buff, preventing it from taking any action, but granting it 8 Icon Block Block at the start of every turn. The Lagavulin will awake at the end of its 3rd turn or when any HP damage is taken through the Icon Block Block, and will lose its Icon Metallicize Metallicize buff in the process. 
+    # The Lagavulin will start with the unique debuff "Asleep", as well as a Icon Metallicize Metallicize buff, preventing it from taking any action, but granting it 8 Icon Block Block at the start of every turn. The Lagavulin will awake at the end of its 3rd turn or when any HP damage is taken through the Icon Block Block, and will lose its Icon Metallicize Metallicize buff in the process.
     # When the Lagavulin wakes up by being attacked, it will be stunned for one turn. If the Lagavulin is left unharmed for three turns, it will wake up on its own and begin the fourth turn unstunned.
     registers = [Message.START_OF_TURN, Message.ON_ATTACKED]
 
@@ -712,7 +714,8 @@ class Dexterity(Effect):
     def callback(self, message, data: tuple[Player, Card]):
         if message == Message.BEFORE_BLOCK:
             player, card = data
-            card.modify_block(self.amount, f"<buff>Dexterity</buff>({self.amount:+d} block)", permanent=False)
+            if card is not None:
+                card.modify_block(self.amount, f"<buff>Dexterity</buff>({self.amount:+d} block)", permanent=False)
 
 
 class SporeCloud(Effect):
@@ -735,7 +738,7 @@ class Thievery(Effect):
     def __init__(self, host, amount=15):
         super().__init__(host, "Thievery", StackType.NONE, EffectType.DEBUFF, "X Gold is stolen with every attack. Total Gold stolen is returned if the enemy is killed.", amount=amount)
         self.stolen_gold = 0
-    
+
     def callback(self, message, data: tuple[Player, int] | tuple[Enemy, list[Enemy]]):
         if message == Message.AFTER_ATTACK:
             attacker, target, dmg = data

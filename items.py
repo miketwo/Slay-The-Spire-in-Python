@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import helper
 from ansi_tags import ansiprint
-from definitions import CardType, DeepCopyTuple, PlayerClass, Rarity, State, TargetType
+from definitions import CardType, PlayerClass, Rarity, State, TargetType
 from message_bus_tools import Card, Message, Potion, Relic
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ class IroncladStrike(Card):
         self.base_damage, self.damage = 9, 9
         self.info = 'Deal 9 damage.'
 
-    def apply(self, origin, target):
+    def apply(self, origin: Player, target: Enemy):
         origin.attack(target, self)
 
 class IroncladDefend(Card):
@@ -229,7 +229,8 @@ class Headbutt(Card):
     def apply(self, origin, target):
         origin.attack(target, self)
         chosen_card = view.list_input("Choose a card to put on top of your draw pile", origin.discard_pile, view.view_piles)
-        origin.draw_pile.append(origin.discard_pile.pop(chosen_card))
+        if chosen_card is not None:
+            origin.draw_pile.append(origin.discard_pile.pop(chosen_card))
 
 class HeavyBlade(Card):
     registers = [Message.BEFORE_ATTACK]
@@ -1128,7 +1129,7 @@ class BloodPotion(Potion):
         self.golden_info = "Heal for 40% of your Max HP."
 
     def apply(self, origin):
-        origin.health_actions(math.round(origin.max_health * self.hp_gain), "Heal")
+        origin.health_actions(round(origin.max_health * self.hp_gain), "Heal")
 
 class AttackPotion(Potion):
     def __init__(self):
@@ -1199,7 +1200,10 @@ class Elixir(Potion):
         super().__init__("Elixir", "<keyword>Exhaust</keyword> any number of cards in your hand.", Rarity.UNCOMMON, TargetType.YOURSELF, PlayerClass.IRONCLAD)
 
     def apply(self, origin):
-        chosen_cards = view.multi_input("Choose any number of cards to <keyword>Exhaust</keyword>", origin.hand, view.view_piles, len(origin.hand))
+        chosen_cards = view.multi_input(input_string="Choose any number of cards to <keyword>Exhaust</keyword>",
+                                        choices=origin.hand,
+                                        displayer=view.view_piles,
+                                        max_choices=len(origin.hand))
         for i in chosen_cards:
             origin.move_card(origin.hand[i], origin.exhaust_pile, origin.hand)
 
@@ -1208,7 +1212,10 @@ class GamblersBrew(Potion):
         super().__init__("Gambler's Brew", "Discard any number of cards, then draw that many.", Rarity.UNCOMMON, TargetType.YOURSELF)
 
     def apply(self, origin):
-        chosen_cards = view.multi_input("Choose any number of cards to discard", origin.hand, view.view_piles)
+        chosen_cards = view.multi_input(input_string="Choose any number of cards to discard",
+                                        choices=origin.hand,
+                                        displayer=view.view_piles,
+                                        max_choices=len(origin.hand))
         for i in chosen_cards:
             origin.move_card(origin.hand[i], origin.discard_pile, origin.hand)
         origin.draw_cards(cards=len(chosen_cards))
@@ -1221,7 +1228,10 @@ class LiquidMemories(Potion):
         self.golden_info = "Choose 2 cards in your discard pile and return them to your hand. They cost 0 this turn."
 
     def apply(self, origin):
-        chosen_cards = view.multi_input(f"Choose {'a' if self.cards == 1 else '2'} card{'' if self.cards == 1 else 's'} to return to your hand", origin.discard_pile, view.view_piles, self.cards)
+        chosen_cards = view.multi_input(input_string=f"Choose {'a' if self.cards == 1 else '2'} card{'' if self.cards == 1 else 's'} to return to your hand",
+                                        choices=origin.discard_pile,
+                                        displayer=view.view_piles,
+                                        max_choices=self.cards)
         for i in chosen_cards:
             chosen_cards[i].modify_energy_cost(0, "Set", one_turn=True)
             origin.move_card(chosen_cards[i], origin.hand, origin.discard_pile)
@@ -1235,7 +1245,11 @@ class DistilledChaos(Potion):
 
     def apply(self, origin, enemies):
         # Literally Havoc but multiple cards
-        for i in range(-1, -self.cards, -1):
+        if len(origin.draw_pile) == 0:
+            return
+        # Take the smaller of the size of the draw pile and the number of cards to play
+        to_play = min(self.cards, len(origin.draw_pile))
+        for i in range(-1, -to_play, -1):
             card = origin.draw_pile[i]
             if card.target in (TargetType.SINGLE, TargetType.YOURSELF):
                 origin.use_card(card, True, origin.draw_pile, random.choice(enemies))

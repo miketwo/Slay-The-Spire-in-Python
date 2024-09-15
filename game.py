@@ -32,6 +32,7 @@ class Game:
             random.seed(self.seed)
 
     def start(self):
+        self.bus.reset()
         self.game_map = game_map.create_first_map()
         self.game_map.pretty_print()
         for encounter in self.game_map:
@@ -233,6 +234,12 @@ class Combat:
                 debug_stats(self.player, self.active_enemies)
 
             # Shows the player's potions, cards(in hand), amount of cards in discard and draw pile, and shows the status for you and the enemies.
+
+            # Check for error condition when (somehow) an integer shows up in the player's hand.
+            for card in self.player.hand:
+                if not isinstance(card, Card):
+                    raise ValueError(f"Card in player's hand is not of type Card: {card} {self.player.hand} {self.turn} {self.__dict__}")
+
             view.display_ui(self.player, self.active_enemies)
             print("1-0: Play card, P: Play Potion, M: View Map, D: View Deck, A: View Draw Pile, S: View Discard Pile, X: View Exhaust Pile, E: End Turn, F: View Debuffs and Buffs")
             action = input("> ").lower()
@@ -366,14 +373,14 @@ class Combat:
             sleep(1)
             view.clear()
             return
-        
+
         # Prevent player from using unplayable cards
         if not card.playable:
             ansiprint("<red>This card is unplayable.</red>")
             sleep(1)
             view.clear()
             return
-        
+
         # Todo: Move to Velvet Choker relic
         if self.player.choker_cards_played == 6:
             ansiprint("You have already played 6 cards this turn!")

@@ -1,17 +1,5 @@
-import copy
 from enum import StrEnum, auto
 
-
-# Convienience classes so I don't have to deepcopy every time I want to get a card.
-class DeepCopyList(list):
-    def __getitem__(self, index):
-        item = super().__getitem__(index)
-        return copy.deepcopy(item)
-
-class DeepCopyTuple(tuple):
-    def __getitem__(self, index):
-        item = super().__getitem__(index)
-        return copy.deepcopy(item)
 
 class CombatTier(StrEnum):
     NORMAL = 'Normal'

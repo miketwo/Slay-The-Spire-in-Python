@@ -9,7 +9,7 @@ from entities import Enemy
 
 
 class Move:
-    # A move is a single action that an enemy can take. 
+    # A move is a single action that an enemy can take.
     # It can be an attack, a buff, a debuff, a status effect, or a block.
     def __init__(self, name: str, action: str, parameters: tuple):
         self.name = name
@@ -94,7 +94,7 @@ class SpikeSlimeL(Enemy):
 
 class SpikeSlimeM(Enemy):
     def __init__(self, ):
-        super().__init__([28, 32], 0, "Spike Slime (M)", )
+        super().__init__([28, 32], 0, "Spike Slime (M)")
 
     def set_intent(self):
         while True:
@@ -104,6 +104,7 @@ class SpikeSlimeM(Enemy):
             elif move_roll < 0.3 and self.move_spam_check("Lick", 3):
                 self.next_move, self.intent = [("Lick", "Debuff", (helper.Frail, 2))], "<debuff>Debuff</debuff>"
             else:
+                print("No moves found for SpikeSlimeM")
                 continue
             break
 
