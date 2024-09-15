@@ -1,14 +1,16 @@
 from __future__ import annotations
-import time
-import sys
+
+import random
+
 import pytest
-import helper
+
 import entities
 import game
+import helper
 import shop
-import random
 from ansi_tags import ansiprint
 from entities import CardType
+import time
 
 
 def replacement_clear_screen():
@@ -28,9 +30,8 @@ def repeat_check(repeat_catcher, last_return, current_return) -> tuple[int, bool
         return repeat_catcher, True
     return repeat_catcher, False
 
-
-seeds = [0,1]
-@pytest.mark.parametrize("seed", seeds)
+@pytest.mark.only
+@pytest.mark.parametrize("seed", [random.randint(0, 1000000) for _ in range(20)])
 def test_e2e(seed, monkeypatch):
     '''Test the game from start to finish
     Plays with (more or less) random inputs to test the game.
@@ -46,7 +47,10 @@ def test_e2e(seed, monkeypatch):
         nonlocal mygame
         nonlocal repeat_catcher
         nonlocal last_return
-        random_return = random.choice(['1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'rest', 'smith', 'view deck', 'leave', 'exit', 'lift', 'toke', 'dig'])
+        random_return = random.choice(
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'e',
+             'p', 'm', 'd', 'a', 's', 'x', 'f', 'y', 'n',
+             'rest', 'smith', 'view deck', 'leave', 'exit', 'lift', 'toke', 'dig'])
         player = mygame.player
         if player.state == entities.State.DEAD:
             return '\n'
@@ -64,7 +68,7 @@ def test_e2e(seed, monkeypatch):
                 return random_return
 
         if player.energy == 0 and player.in_combat:
-            print(f"Player has no energy left.")
+            print("Player has no energy left.")
             # from pprint import pprint
             # pprint(player.__dict__)
             repeat_catcher, check = repeat_check(repeat_catcher, last_return, 'e')
@@ -76,7 +80,7 @@ def test_e2e(seed, monkeypatch):
                 last_return = random_return
                 print(f"Player chose {random_return}")
                 return random_return
-        
+
         # Default to picking randomly
         print(f"Player chose {random_return}")
         return random_return
@@ -89,7 +93,12 @@ def test_e2e(seed, monkeypatch):
         m.setattr(shop, 'sleep', lambda x: None)
         helper.view.clear = replacement_clear_screen
         try:
+            start = time.time()
             mygame.start()
         except Exception as e:
             ansiprint(f"<red><bold>Failed with seed: {seed}</bold></red>")
             raise e
+        finally:
+            end = time.time()
+            ansiprint(f"\n\n<green><bold>Game took {end - start:.2f} seconds</bold></green>")
+
