@@ -272,7 +272,6 @@ class Combat:
 
     def combat(self) -> None:
         """This is actually pretty straightforward now."""
-        current_map = self.game_map
         self.start_combat()
         while not self.end_combat_conditions():
             bus.publish(Message.START_OF_TURN, (self.turn, self.player))
@@ -298,6 +297,7 @@ class Combat:
             sleep(0.8)
             print("You recieve nothing.")
             sleep(1.5)
+            self.player.state = State.ALIVE
             view.clear()
         elif robbed:
             print("Robbed...")

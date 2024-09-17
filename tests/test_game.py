@@ -30,8 +30,8 @@ def repeat_check(repeat_catcher, last_return, current_return) -> tuple[int, bool
         return repeat_catcher, True
     return repeat_catcher, False
 
-@pytest.mark.only
-@pytest.mark.parametrize("seed", [random.randint(0, 1000000) for _ in range(20)])
+@pytest.mark.timeout(60)
+@pytest.mark.parametrize("seed", list(range(300)))
 def test_e2e(seed, monkeypatch):
     '''Test the game from start to finish
     Plays with (more or less) random inputs to test the game.
@@ -54,6 +54,10 @@ def test_e2e(seed, monkeypatch):
         player = mygame.player
         if player.state == entities.State.DEAD:
             return '\n'
+        if args and "Choose" in args[0]:
+            choice = random.randint(1, 10)
+            print(f"Player chose {choice}")
+            return str(choice)
         possible_cards = [card for card in player.hand if card.energy_cost <= player.energy and card.type != CardType.STATUS]
         if len(possible_cards) > 0:
             ret = str(random.randint(1, len(possible_cards)))

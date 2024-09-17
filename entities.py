@@ -84,10 +84,10 @@ class Player(Registerable):
     max_potions: The max amount of potions the player can have
     """
 
-    registers = [Message.END_OF_COMBAT, 
-                 Message.START_OF_COMBAT, 
-                 Message.START_OF_TURN, 
-                 Message.END_OF_TURN, 
+    registers = [Message.END_OF_COMBAT,
+                 Message.START_OF_COMBAT,
+                 Message.START_OF_TURN,
+                 Message.END_OF_TURN,
                  Message.ON_RELIC_ADD,
                  Message.ON_PLAYER_HEALTH_LOSS]
 

@@ -479,12 +479,12 @@ class BloodForBlood(Card):
         self.base_damage, self.damage = 22, 22
         self.info = "Costs 1 less <keyword>Energy</keyword> for each time you lose HP in combat. Deal 22 damage."
 
-    def apply(self, origin, target):
-        origin.attack(target, self)
+    def apply(self, origin: Player, target: Enemy):
+        origin.attack(target=target, card=self)
 
-    def callback(self, message, data):
+    def callback(self, message, data: tuple[Enemy, Player, int]):
         if message == Message.ON_PLAYER_HEALTH_LOSS:
-            _ = data
+            # enemy, player, dmg = data
             self.modify_energy_cost(-1, 'Adjust')
 
 class Bloodletting(Card):
