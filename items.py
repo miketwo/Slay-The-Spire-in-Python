@@ -1331,7 +1331,7 @@ class EntropicBrew(Potion):
     def apply(self, origin):
         potions = create_all_potions()
         for _ in range(origin.max_potions - len(origin.potions)):
-            origin.potions.append(random.choice(potion for potion in potions if potion.player_class == origin.player_class))
+            origin.potions.append(random.choice([potion for potion in potions if potion.player_class == origin.player_class]))
 
 class SmokeBomb(Potion):
     def __init__(self):
