@@ -515,8 +515,9 @@ class BurningPact(Card):
 
     def apply(self, origin):
         chosen_card = view.list_input("Choose a card to <keyword>Exhaust</keyword>", origin.hand, view.view_piles)
-        origin.move_card(origin.hand[chosen_card], origin.exhaust_pile, origin.hand, False)
-        origin.draw_cards(cards=self.cards)
+        if chosen_card is not None:
+            origin.move_card(origin.hand[chosen_card], origin.exhaust_pile, origin.hand, False)
+            origin.draw_cards(cards=self.cards)
 
 class Carnage(Card):
     def __init__(self):
@@ -1142,8 +1143,9 @@ class AttackPotion(Potion):
         cards = create_all_cards()
         valid_cards = random.choices([card for card in cards if card.type == CardType.ATTACK], k=3)
         chosen_card = view.list_input("Choose a card", valid_cards, view.view_piles)
-        for _ in range(self.copies):
-            origin.hand.append(chosen_card)
+        if chosen_card is not None:
+            for _ in range(self.copies):
+                origin.hand.append(deepcopy(valid_cards[chosen_card]))
 
 class SkillPotion(Potion):
     def __init__(self):
@@ -1156,8 +1158,9 @@ class SkillPotion(Potion):
         cards = create_all_cards()
         valid_cards = random.choices([card for card in cards if card.type == CardType.SKILL], k=3)
         chosen_card = view.list_input("Choose a card", valid_cards, view.view_piles)
-        for _ in range(self.copies):
-            origin.hand.append(chosen_card)
+        if chosen_card is not None:
+            for _ in range(self.copies):
+                origin.hand.append(deepcopy(valid_cards[chosen_card]))
 
 class PowerPotion(Potion):
     def __init__(self):
@@ -1170,8 +1173,9 @@ class PowerPotion(Potion):
         cards = create_all_cards()
         valid_cards = random.choices([card for card in cards if card.type == CardType.POWER], k=3)
         chosen_card = view.list_input("Choose a card", valid_cards, view.view_piles)
-        for _ in range(self.copies):
-            origin.hand.append(chosen_card)
+        if chosen_card is not None:
+            for _ in range(self.copies):
+                origin.hand.append(deepcopy(valid_cards[chosen_card]))
 
 class ColorlessPotion(Potion):
     def __init__(self):
@@ -1182,10 +1186,12 @@ class ColorlessPotion(Potion):
 
     def apply(self, origin):
         cards = create_all_cards()
-        valid_cards = random.choices([card for card in cards if card.player_class == PlayerClass.COLORLESS], k=3)
+        colorless_cards = [card for card in cards if card.player_class == PlayerClass.COLORLESS]
+        valid_cards = random.choices(colorless_cards, k=min(len(colorless_cards), 3))
         chosen_card = view.list_input("Choose a card", valid_cards, view.view_piles)
-        for _ in range(self.copies):
-            origin.hand.append(chosen_card)
+        if chosen_card is not None:
+            for _ in range(self.copies):
+                origin.hand.append(deepcopy(valid_cards[chosen_card]))
 
 class BlessingOfTheForge(Potion):
     def __init__(self):
@@ -1204,8 +1210,9 @@ class Elixir(Potion):
                                         choices=origin.hand,
                                         displayer=view.view_piles,
                                         max_choices=len(origin.hand))
-        for i in chosen_cards:
-            origin.move_card(origin.hand[i], origin.exhaust_pile, origin.hand)
+        if chosen_cards is not None:
+            for i in chosen_cards:
+                origin.move_card(origin.hand[i], origin.exhaust_pile, origin.hand)
 
 class GamblersBrew(Potion):
     def __init__(self):
@@ -1216,9 +1223,10 @@ class GamblersBrew(Potion):
                                         choices=origin.hand,
                                         displayer=view.view_piles,
                                         max_choices=len(origin.hand))
-        for i in chosen_cards:
-            origin.move_card(origin.hand[i], origin.discard_pile, origin.hand)
-        origin.draw_cards(cards=len(chosen_cards))
+        if chosen_cards is not None:
+            for i in chosen_cards:
+                origin.move_card(origin.hand[i], origin.discard_pile, origin.hand)
+            origin.draw_cards(cards=len(chosen_cards))
 
 class LiquidMemories(Potion):
     def __init__(self):
@@ -1232,9 +1240,10 @@ class LiquidMemories(Potion):
                                         choices=origin.discard_pile,
                                         displayer=view.view_piles,
                                         max_choices=self.cards)
-        for i in chosen_cards:
-            chosen_cards[i].modify_energy_cost(0, "Set", one_turn=True)
-            origin.move_card(chosen_cards[i], origin.hand, origin.discard_pile)
+        if chosen_cards is not None:
+            for i in chosen_cards:
+                origin.discard_pile[i].modify_energy_cost(0, "Set", one_turn=True)
+                origin.move_card(chosen_cards[i], origin.hand, origin.discard_pile)
 
 class DistilledChaos(Potion):
     def __init__(self):
