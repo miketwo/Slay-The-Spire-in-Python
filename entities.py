@@ -188,11 +188,28 @@ class Player(Registerable):
         Uses a card
         Wow!
         """
+        # Determine exhaust status
         if card.type in (CardType.STATUS, CardType.CURSE) and card.name not in ("Slimed", "Pride"):
             if card.type == CardType.CURSE and items.BlueCandle in self.relics:
                 exhaust = True
             else:
                 return
+        if (card.type == CardType.STATUS and "MedicalKit" in self.relics):
+            exhaust = True
+        elif (card.type == CardType.CURSE and items.BlueCandle in self.relics):
+            self.take_sourceless_dmg(1)
+            exhaust = True
+
+        # Move the card to the appropriate pile
+        if pile is not None:
+            if exhaust is True or getattr(card, "exhaust", False) is True:
+                ansiprint(f"{card.name} was <bold>Exhausted</bold>.")
+                self.move_card(card=card, move_to=self.exhaust_pile, from_location=pile, cost_energy=True)
+                bus.publish(Message.ON_EXHAUST, (self, card))
+            else:
+                self.move_card(card=card, move_to=self.discard_pile, from_location=pile, cost_energy=True)
+
+        # Apply the card's effects
         if card.target == TargetType.SINGLE:
             card.apply(origin=self, target=target)
         elif card.target in (TargetType.AREA, TargetType.ANY):
@@ -202,18 +219,6 @@ class Player(Registerable):
         else:
             raise ValueError(f"Invalid target type: {card.target}")
         bus.publish(Message.ON_CARD_PLAY, (self, card, target, enemies))
-        if (card.type == CardType.STATUS and "MedicalKit" in self.relics):
-            exhaust = True
-        elif (card.type == CardType.CURSE and items.BlueCandle in self.relics):
-            self.take_sourceless_dmg(1)
-            exhaust = True
-        if pile is not None:
-            if exhaust is True or getattr(card, "exhaust", False) is True:
-                ansiprint(f"{card.name} was <bold>Exhausted</bold>.")
-                self.move_card(card=card, move_to=self.exhaust_pile, from_location=pile, cost_energy=True)
-                bus.publish(Message.ON_EXHAUST, (self, card))
-            else:
-                self.move_card(card=card, move_to=self.discard_pile, from_location=pile, cost_energy=True)
         sleep(0.5)
         view.clear()
 
@@ -297,7 +302,7 @@ class Player(Registerable):
                     return new_card
             else:
                 raise ValueError(f"Invalid action: {action}")
-                
+
 
     def move_card(self, card, move_to, from_location, cost_energy=False, shuffle=False):
         if cost_energy is True:
