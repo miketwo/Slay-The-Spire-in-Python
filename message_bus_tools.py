@@ -87,6 +87,10 @@ class MessageBus():
 
     def reset(self):
         self.subscribers = dict(dict())  # noqa: C408
+        self.death_messages = []  # what is this?
+        self.unsubscribe_set = set()
+        self.subscribe_set = set()
+        self.lock_count = 0
 
     def publish(self, event_type: Message, data):
         self.lock_count += 1
