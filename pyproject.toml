@@ -16,6 +16,7 @@ grandalf = "^0.8"
 pyinstaller = "^6.3.0"
 tiktoken = "^0.7.0"
 pytest-timeout = "^2.3.1"
+pytest-xdist = "^3.6.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest-watch = "^4.2.0"
