@@ -1,11 +1,12 @@
 import math
 import random
 from time import sleep
+from typing import TYPE_CHECKING
 
 import game_map
 import items
 from ansi_tags import ansiprint
-from definitions import CombatTier, EncounterType, State, TargetType, CardType
+from definitions import CardType, CombatTier, EncounterType, State, TargetType
 from enemy_catalog import (
     create_act1_boss,
     create_act1_elites,
@@ -14,9 +15,8 @@ from enemy_catalog import (
 from entities import Enemy, Player
 from events import choose_event
 from helper import ei, gen, view
-from message_bus_tools import Message, bus, Card
+from message_bus_tools import Card, Message, bus
 from shop import Shop
-from typing import TYPE_CHECKING
 
 DEBUG = True
 
@@ -36,9 +36,7 @@ class Game:
         self.game_map = game_map.create_first_map()
         self.game_map.pretty_print()
         for encounter in self.game_map:
-            self.current_encounter = encounter
             self.play(encounter, self.game_map)
-            self.current_encounter = None
             if self.player.state == State.DEAD:
                 ansiprint("<red>Exiting Game</red>")
                 return False
@@ -46,22 +44,25 @@ class Game:
             self.game_map.pretty_print()
 
     def play(self, encounter: EncounterType, game_map: game_map.GameMap):
+        self.current_encounter = encounter
         if encounter.type == EncounterType.START:
-            pass
+            retval = None
         elif encounter.type == EncounterType.REST_SITE:
-            return self.rest_site()
+            retval = self.rest_site()
         elif encounter.type == EncounterType.UNKNOWN:
-            return self.unknown(game_map=self.game_map)
+            retval = self.unknown(game_map=self.game_map)
         elif encounter.type == EncounterType.BOSS:
-            return Combat(tier=CombatTier.BOSS, player=self.player, game_map=self.game_map).combat()
+            retval = Combat(tier=CombatTier.BOSS, player=self.player, game_map=self.game_map).combat()
         elif encounter.type == EncounterType.ELITE:
-            return Combat(tier=CombatTier.ELITE, player=self.player, game_map=self.game_map).combat()
+            retval = Combat(tier=CombatTier.ELITE, player=self.player, game_map=self.game_map).combat()
         elif encounter.type == EncounterType.NORMAL:
-            return Combat(tier=CombatTier.NORMAL, player=self.player, game_map=self.game_map).combat()
+            retval = Combat(tier=CombatTier.NORMAL, player=self.player, game_map=self.game_map).combat()
         elif encounter.type == EncounterType.SHOP:
-            return Shop(self.player).loop()
+            retval = Shop(self.player).loop()
         else:
             raise game_map.MapError(f"Encounter type {encounter} is not valid.")
+        self.current_encounter = None
+        return retval
 
     def rest_site(self):
         """
@@ -209,10 +210,11 @@ class Combat:
         self.turn = 1
         self.game_map = game_map
 
-    def end_combat_conditions(self):
+    def end_combat_conditions(self, max_turns=None) -> bool:
         '''Returns True if one or more of the end combat conditions are met.'''
         return self.player.state in (State.DEAD, State.ESCAPED) or \
-            all((enemy.state == State.DEAD for enemy in self.all_enemies))
+            all((enemy.state == State.DEAD for enemy in self.all_enemies)) or \
+            (max_turns is not None and self.turn >= max_turns)
 
     def combat_turn(self) -> tuple[bool, bool, bool]:
         '''Executes 1 complete turn of combat.
@@ -270,7 +272,7 @@ class Combat:
                 view.clear()
                 continue
 
-    def combat(self) -> None:
+    def combat(self, max_turns=None) -> None:
         """This is actually pretty straightforward now."""
         self.start_combat()
         while not self.end_combat_conditions():
@@ -401,16 +403,22 @@ class Combat:
                 self.death_messages.append(current_states[i])
 
     def play_potion(self):
-        if len(self.player.potions) == 0:
-            ansiprint("<red>You have no potions.</red>")
-            return
-        chosen_potion = view.list_input("Choose a potion to play", self.player.potions, view.view_potions, lambda potion: potion.playable, "That potion is not playable.")
-        potion = self.player.potions.pop(chosen_potion)
+        potion = self._choose_potion(self.player.potions)
+        return self._apply_potion(potion)
+
+    def _apply_potion(self, potion):
         if potion.target == TargetType.YOURSELF:
-            potion.apply(self.player)
+            return potion.apply(self.player)
         elif potion.target == TargetType.SINGLE:
             target = self.select_target()
-            potion.apply(self.player, self.active_enemies[target])
+            return potion.apply(self.player, self.active_enemies[target])
         elif potion.target in (TargetType.AREA, TargetType.ANY):
-            potion.apply(self.player, self.active_enemies)
+            return potion.apply(self.player, self.active_enemies)
+
+    def _choose_potion(self, potions):
+        if len(potions) == 0:
+            ansiprint("<red>You have no potions.</red>")
+            return None
+        chosen_potion = view.list_input("Choose a potion to play", potions, view.view_potions, lambda potion: potion.playable, "That potion is not playable.")
+        return potions.pop(chosen_potion)
 

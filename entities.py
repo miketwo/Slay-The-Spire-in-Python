@@ -223,7 +223,7 @@ class Player(Registerable):
         view.clear()
 
     def draw_cards(self, cards: int = None):
-        """Draws [cards] cards."""
+        """Draws [cards] cards from draw pile to hand."""
         if cards is None:
             cards = self.draw_strength
         action = PendingAction(self, self._draw_cards, cards)
