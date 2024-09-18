@@ -1211,21 +1211,21 @@ class Elixir(Potion):
                                         displayer=view.view_piles,
                                         max_choices=len(origin.hand))
         if chosen_cards is not None:
-            for i in chosen_cards:
-                origin.move_card(origin.hand[i], origin.exhaust_pile, origin.hand)
+            for card in chosen_cards:
+                origin.move_card(card, origin.exhaust_pile, origin.hand)
 
 class GamblersBrew(Potion):
     def __init__(self):
         super().__init__("Gambler's Brew", "Discard any number of cards, then draw that many.", Rarity.UNCOMMON, TargetType.YOURSELF)
 
-    def apply(self, origin):
+    def apply(self, origin: Player):
         chosen_cards = view.multi_input(input_string="Choose any number of cards to discard",
                                         choices=origin.hand,
                                         displayer=view.view_piles,
                                         max_choices=len(origin.hand))
         if chosen_cards is not None:
-            for i in chosen_cards:
-                origin.move_card(origin.hand[i], origin.discard_pile, origin.hand)
+            for card in chosen_cards:
+                origin.move_card(card, origin.discard_pile, origin.hand)
             origin.draw_cards(cards=len(chosen_cards))
 
 class LiquidMemories(Potion):
@@ -1241,9 +1241,9 @@ class LiquidMemories(Potion):
                                         displayer=view.view_piles,
                                         max_choices=self.cards)
         if chosen_cards is not None:
-            for i in chosen_cards:
-                origin.discard_pile[i].modify_energy_cost(0, "Set", one_turn=True)
-                origin.move_card(chosen_cards[i], origin.hand, origin.discard_pile)
+            for card in chosen_cards:
+                card.modify_energy_cost(0, "Set", one_turn=True)
+                origin.move_card(card, origin.hand, origin.discard_pile)
 
 class DistilledChaos(Potion):
     def __init__(self):
