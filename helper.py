@@ -189,14 +189,17 @@ class Displayer:
         validator: Callable = lambda placehold: bool(placehold),
         message_when_invalid: str = None,
         extra_allowables: list = None,
-    ):
+    ) -> list[Card] | None:
         """Basically the same as view.list_input but you can choose multiple cards one at a time. Mainly used for discarding and Exhausting cards."""
+        # Strongly consider replacing with the pick library
         if not extra_allowables:
             extra_allowables = []
         finished = False
         to_be_moved = []
         while not finished:
-            while True and len(choices) > 0:
+            while True:
+                if len(choices) == 0:
+                    return None
                 try:
                     displayer(choices, validator=validator)
                     ansiprint(input_string + "(type 'exit' to finish) > ", end="")
@@ -229,6 +232,7 @@ class Displayer:
                     continue
                 to_be_moved.append(choices[option])
                 break
+        return to_be_moved
 
     def clear(self):
         system("cls" if name == "nt" else "clear")
