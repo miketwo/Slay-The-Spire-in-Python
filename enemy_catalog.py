@@ -19,6 +19,13 @@ class Move:
     def __str__(self):
         return f"Move: {self.name} | {self.action} | {self.parameters}"
 
+class PunchingBag(Enemy):
+    def __init__(self, ):
+        super().__init__(health_range=[1000, 1000], block=100, name="Punching Bag")
+
+    def set_intent(self):
+        self.next_move, self.intent = [("Sway", "Sway")], "<yellow>Do nothing...</yellow>"
+
 
 class AcidSlimeL(Enemy):
     def __init__(self, ):
