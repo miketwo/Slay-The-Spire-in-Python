@@ -404,7 +404,8 @@ class Combat:
 
     def play_potion(self):
         potion = self._choose_potion(self.player.potions)
-        return self._apply_potion(potion)
+        if potion is not None:
+            return self._apply_potion(potion)
 
     def _apply_potion(self, potion):
         if potion.target == TargetType.YOURSELF:
