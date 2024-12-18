@@ -435,7 +435,7 @@ class FireBreathing(Effect):
 
 class FlameBarrier(Effect):
     # "Gain 12 <keyword>Block</keyword>. Whenever you're attacked this turn, deal 4 damage back."
-    registers = [Message.ON_ATTACKED]
+    registers = [Message.AFTER_ATTACK]
 
     def __init__(self, host, amount):
         super().__init__(
@@ -447,10 +447,12 @@ class FlameBarrier(Effect):
             amount,
         )
 
-    def callback(self, message, data):
-        if message == Message.ON_ATTACKED:
-            target = data
-            target.health -= 4
+    def callback(self, message, data: tuple[Player|Enemy, Player|Enemy, int]):
+        if message == Message.AFTER_ATTACK:
+            attacker, victim, damage = data
+            if victim == self.host:
+                ansiprint(f"{attacker.name} took 4 damage from {victim.name}'s <buff>Flame Barrier</buff>.")
+                attacker.take_sourceless_dmg(4)
 
 
 class Metallicize(Effect):
